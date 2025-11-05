@@ -319,61 +319,23 @@ exports.createJob = catchAsync(async (req, res, next) => {
   delete jobData.premiumRequired;
   delete jobData.businessAddress;
 
-  // Ensure location is properly set
-  if (!jobData.location) {
-    // If no location provided, copy from business
-    if (!business.location) {
-      return next(new AppError('Business location is required. Please set business location first.', 400));
-    }
-
-    jobData.location = {
-      line1: business.location.line1,
-      address: business.location.address || business.location.line1,
-      city: business.location.city,
-      state: business.location.state,
-      postalCode: business.location.postalCode,
-      country: business.location.country,
-      latitude: business.location.latitude,
-      longitude: business.location.longitude,
-      formattedAddress: [
-        business.location.line1,
-        business.location.city,
-        business.location.state,
-        business.location.postalCode,
-        business.location.country
-      ].filter(Boolean).join(', '),
-      allowedRadius: business.location.allowedRadius || 150
-    };
-  } else {
-    // If location provided, ensure all required fields are present
-    const requiredFields = ['line1', 'city', 'state', 'postalCode', 'country', 'latitude', 'longitude'];
-    const missingFields = requiredFields.filter(field => !jobData.location[field]);
-    
-    if (missingFields.length > 0) {
-      return next(new AppError(`Missing required location fields: ${missingFields.join(', ')}`, 400));
-    }
-
-    // Ensure formattedAddress is set
-    if (!jobData.location.formattedAddress) {
-      jobData.location.formattedAddress = [
-        jobData.location.line1,
-        jobData.location.city,
-        jobData.location.state,
-        jobData.location.postalCode,
-        jobData.location.country
-      ].filter(Boolean).join(', ');
-    }
-
-    // Ensure address field matches line1 if not provided
-    if (!jobData.location.address) {
-      jobData.location.address = jobData.location.line1;
-    }
+  // Ensure location is properly formatted and has all required fields
+  const location = jobData.location;
+  if (!location.label) {
+    location.label = business.businessName || business.name;
+  }
+  if (!location.formattedAddress && business.location) {
+    location.formattedAddress = [
+      location.line1 || business.location.line1,
+      location.city || business.location.city,
+      location.state || business.location.state,
+      location.postalCode || business.location.postalCode
+    ].filter(Boolean).join(', ');
   }
 
   const initialStatus = shouldAutoPublish ? 'active' : 'draft';
 
-  // Create a new Job instance first to trigger validation
-  const job = new Job({
+  const job = await Job.create({
     ...jobData,
     employer: business.owner,
     createdBy: req.user._id,
@@ -384,16 +346,6 @@ exports.createJob = catchAsync(async (req, res, next) => {
     publishedAt: shouldAutoPublish ? new Date() : null,
     publishedBy: shouldAutoPublish ? req.user._id : null,
   });
-
-  try {
-    // This will trigger the pre-validate hook
-    await job.validate();
-  } catch (err) {
-    return next(new AppError(err.message, 400));
-  }
-
-  // If validation passes, save the job
-  await job.save();
 
   await job.populate([
     {

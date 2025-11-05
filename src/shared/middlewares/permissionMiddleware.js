@@ -388,6 +388,15 @@ function requirePermissions(permissions, options = {}) {
         return next(new AppError('Authentication required', 401));
       }
 
+      // Skip business ID check for business creation endpoint
+      if (req.method === 'POST' && req.path === '/businesses') {
+        // For business creation, only check if user is employer
+        if (req.user.userType !== 'employer') {
+          return next(new AppError('Only employers can create businesses', 403));
+        }
+        return next();
+      }
+
       // Get business ID from request
       const businessId = await getBusinessIdFromRequest(req);
 

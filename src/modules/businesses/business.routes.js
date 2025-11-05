@@ -1,5 +1,6 @@
 const express = require('express');
 const controller = require('./business.controller');
+const { createBusiness } = require('./createBusiness');
 const { protect, restrictTo } = require('../../shared/middlewares/auth.middleware');
 const { requirePermissions } = require('../../shared/middlewares/permissionMiddleware');
 

@@ -9,7 +9,7 @@ router.use(protect);
 
 // Business management routes with permission protection
 router.get('/', controller.listBusinesses); // No specific permission needed - users can see their businesses
-router.post('/', protect, restrictTo('employer'), controller.createBusiness);
+router.post('/', protect, restrictTo('employer'), createBusiness);
 router.patch('/:businessId', requirePermissions('edit_business'), controller.updateBusiness);
 router.delete('/:businessId', requirePermissions('delete_business'), controller.deleteBusiness);
 router.post('/:businessId/select', restrictTo('employer'), controller.selectBusiness); // No specific permission needed

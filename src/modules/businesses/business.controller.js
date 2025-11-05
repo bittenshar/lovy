@@ -3,6 +3,7 @@ const TeamMember = require('./teamMember.model');
 const User = require('../users/user.model');
 const catchAsync = require('../../shared/utils/catchAsync');
 const AppError = require('../../shared/utils/appError');
+const { createBusiness } = require('./createBusiness');
 const {
   ensureBusinessAccess,
   getAccessibleBusinessIds,

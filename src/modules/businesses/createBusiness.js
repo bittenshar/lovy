@@ -10,44 +10,39 @@ exports.createBusiness = catchAsync(async (req, res, next) => {
     // Set the owner to the current user from the token
     const businessData = {
       ...req.body,
-      owner: req.user._id,  // This comes from the auth middleware
+      owner: req.user._id
     };
 
-    // Validate and format location if provided
+    // Handle location data if provided
     if (businessData.location) {
+      const location = businessData.location;
+      
       // Required location fields
       const requiredFields = ['line1', 'city', 'state', 'postalCode', 'country', 'latitude', 'longitude'];
-      const missingFields = requiredFields.filter(field => !businessData.location[field]);
+      const missingFields = requiredFields.filter(field => !location[field]);
       
       if (missingFields.length > 0) {
         return next(new AppError(`Missing required location fields: ${missingFields.join(', ')}`, 400));
       }
 
-      // Create formatted address string
-      const formattedAddressArray = [
-        businessData.location.line1,
-        businessData.location.city,
-        businessData.location.state,
-        businessData.location.postalCode,
-        businessData.location.country
-      ];
-
-      const formattedAddress = formattedAddressArray.filter(Boolean).join(', ');
-
-      // Create a clean location object with all required fields
+      // Create the formatted location object with all required fields
       businessData.location = {
-        line1: businessData.location.line1,
-        city: businessData.location.city,
-        state: businessData.location.state,
-        postalCode: businessData.location.postalCode,
-        country: businessData.location.country,
-        latitude: businessData.location.latitude,
-        longitude: businessData.location.longitude,
-        formattedAddress: formattedAddress,
-        address: businessData.location.line1, // Using line1 as the address
-        allowedRadius: businessData.location.allowedRadius || 150,
-        isActive: true
-      };
+        line1: location.line1,
+        address: location.line1,
+        city: location.city,
+        state: location.state,
+        postalCode: location.postalCode,
+        country: location.country,
+        latitude: location.latitude,
+        longitude: location.longitude,
+        formattedAddress: [
+          location.line1,
+          location.city,
+          location.state,
+          location.postalCode,
+          location.country
+        ].filter(Boolean).join(', '),
+        allowedRadius: location.allowedRadius || 150
       };
     }
 
@@ -79,7 +74,6 @@ exports.createBusiness = catchAsync(async (req, res, next) => {
         business
       }
     });
-
   } catch (error) {
     console.error('Error creating business:', error);
     return next(new AppError(error.message || 'Error creating business', 400));

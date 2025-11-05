@@ -108,7 +108,8 @@ const businessSchema = new mongoose.Schema(
 
 // Add pre-save middleware to format address
 businessSchema.pre('save', function(next) {
-  if (this.location && !this.location.formattedAddress) {
+  if (this.location) {
+    // Always ensure formattedAddress is set when location exists
     const parts = [
       this.location.line1,
       this.location.city,
@@ -118,9 +119,27 @@ businessSchema.pre('save', function(next) {
     ].filter(Boolean);
     
     this.location.formattedAddress = parts.join(', ');
+    
+    // Ensure address is set as well
+    if (!this.location.address) {
+      this.location.address = this.location.line1;
+    }
   }
   next();
 });
+
+// Handle logo modifications
+businessSchema.pre('save', function (next) {
+  if (this.isModified('logo') || this.isModified('logoUrl')) {
+    this.logoSmall = undefined;
+    this.logoMedium = undefined;
+    this.logoSignature = undefined;
+    this.logoOptimizedAt = undefined;
+  }
+  next();
+});
+
+module.exports = mongoose.model('Business', businessSchema);
   
 
 

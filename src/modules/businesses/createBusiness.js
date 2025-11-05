@@ -74,6 +74,7 @@ exports.createBusiness = catchAsync(async (req, res, next) => {
         business
       }
     });
+    
   } catch (error) {
     console.error('Error creating business:', error);
     return next(new AppError(error.message || 'Error creating business', 400));

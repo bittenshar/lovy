@@ -24,19 +24,30 @@ exports.createBusiness = catchAsync(async (req, res, next) => {
       }
 
       // Create formatted address string
-      const formattedAddress = [
+      const formattedAddressArray = [
         businessData.location.line1,
         businessData.location.city,
         businessData.location.state,
         businessData.location.postalCode,
         businessData.location.country
-      ].filter(Boolean).join(', ');
+      ];
 
-      // Update the location object in businessData
+      const formattedAddress = formattedAddressArray.filter(Boolean).join(', ');
+
+      // Create a clean location object with all required fields
       businessData.location = {
-        ...businessData.location,
-        formattedAddress,
-        address: businessData.location.address || businessData.location.line1
+        line1: businessData.location.line1,
+        city: businessData.location.city,
+        state: businessData.location.state,
+        postalCode: businessData.location.postalCode,
+        country: businessData.location.country,
+        latitude: businessData.location.latitude,
+        longitude: businessData.location.longitude,
+        formattedAddress: formattedAddress,
+        address: businessData.location.line1, // Using line1 as the address
+        allowedRadius: businessData.location.allowedRadius || 150,
+        isActive: true
+      };
       };
     }
 

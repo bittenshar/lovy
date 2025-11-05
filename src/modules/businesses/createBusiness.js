@@ -3,6 +3,7 @@ const AppError = require('../../shared/utils/appError');
 const Business = require('./business.model');
 const User = require('../users/user.model');
 const TeamMember = require('./teamMember.model');
+const { scheduleLogoOptimization } = require('./business.controller');
 
 exports.createBusiness = catchAsync(async (req, res, next) => {
   try {
@@ -24,16 +25,18 @@ exports.createBusiness = catchAsync(async (req, res, next) => {
         return next(new AppError(`Missing required location fields: ${missingFields.join(', ')}`, 400));
       }
 
-      // Format the address if not provided
-      if (!location.formattedAddress) {
-        location.formattedAddress = [
-          location.line1,
-          location.city,
-          location.state,
-          location.postalCode,
-          location.country
-        ].filter(Boolean).join(', ');
-      }
+      // Format and set the address fields
+      const formattedAddress = [
+        location.line1,
+        location.city,
+        location.state,
+        location.postalCode,
+        location.country
+      ].filter(Boolean).join(', ');
+
+      // Set both formattedAddress and address fields
+      location.formattedAddress = formattedAddress;
+      location.address = location.address || formattedAddress; // Use existing address or formatted one
     }
 
     // Create the business

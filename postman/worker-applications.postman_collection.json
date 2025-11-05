@@ -1,0 +1,561 @@
+{
+  "info": {
+    "_postman_id": "b986c5ec-bf62-4abb-8a8d-1f25ab0fcbe9",
+    "name": "Worker & Employer Applications",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "description": "Requests to manage job applications as a worker and review or hire as an employer."
+  },
+  "item": [
+    {
+      "name": "Worker Flows",
+      "description": "Requests an authenticated worker can use to find jobs and manage their applications.",
+      "item": [
+        {
+          "name": "List Active Jobs",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{workerToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/jobs?status=active",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "jobs"
+              ],
+              "query": [
+                {
+                  "key": "status",
+                  "value": "active"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "List My Applications",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{workerToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/applications/me",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "applications",
+                "me"
+              ]
+            },
+            "description": "Returns the authenticated worker's applications sorted newest-first."
+          }
+        },
+        {
+          "name": "Apply To Job",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{workerToken}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"message\": \"Hi! I have 3 years of experience in hospitality and can start immediately.\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/jobs/{{jobId}}/applications",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "jobs",
+                "{{jobId}}",
+                "applications"
+              ]
+            },
+            "description": "Submit a job application for the specified jobId using the authenticated worker context."
+          },
+          "response": []
+        },
+        {
+          "name": "Withdraw Application",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{workerToken}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"withdrawn\",\n  \"message\": \"Optional context for withdrawing this application.\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/applications/{{applicationId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "applications",
+                "{{applicationId}}"
+              ]
+            },
+            "description": "Withdraw the authenticated worker's application or update the message on an existing application."
+          }
+        },
+        {
+          "name": "List Applications By Worker Id",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{workerToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/applications?workerId={{workerId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "applications"
+              ],
+              "query": [
+                {
+                  "key": "workerId",
+                  "value": "{{workerId}}"
+                }
+              ]
+            },
+            "description": "Fetch applications for a specific workerId (useful when querying as an admin or employer)."
+          }
+        },
+        {
+          "name": "List Attendance Schedule",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{workerToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/workers/{{workerId}}/attendance/schedule?status=all",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "workers",
+                "{{workerId}}",
+                "attendance",
+                "schedule"
+              ],
+              "query": [
+                {
+                  "key": "status",
+                  "value": "all",
+                  "description": "Optional status filter (scheduled, clocked-in, completed, missed)"
+                },
+                {
+                  "key": "from",
+                  "value": "",
+                  "description": "Optional start date (YYYY-MM-DD) to bound the schedule window"
+                },
+                {
+                  "key": "to",
+                  "value": "",
+                  "description": "Optional end date (YYYY-MM-DD) to bound the schedule window"
+                },
+                {
+                  "key": "jobId",
+                  "value": "",
+                  "description": "Filter schedule entries for a specific job"
+                },
+                {
+                  "key": "businessId",
+                  "value": "",
+                  "description": "Filter schedule entries for a specific business"
+                }
+              ]
+            },
+            "description": "Returns a grouped view of the worker's attendance schedule including past and upcoming dates, along with daily totals."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Employer Flows",
+      "description": "Requests an authenticated employer can use to review, reject, or hire applicants across their jobs.",
+      "item": [
+        {
+          "name": "List Employer Applications",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{employerToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/employers/me/applications?status=pending&limit=20&page=1",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "employers",
+                "me",
+                "applications"
+              ],
+              "query": [
+                {
+                  "key": "status",
+                  "value": "pending"
+                },
+                {
+                  "key": "limit",
+                  "value": "20"
+                },
+                {
+                  "key": "page",
+                  "value": "1"
+                }
+              ]
+            },
+            "description": "Paginated list of applications tied to jobs owned by the authenticated employer. Supports status, jobId, businessId, search, sortBy, and sortOrder query params."
+          }
+        },
+        {
+          "name": "Update Application Status",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{employerToken}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"rejected\",\n  \"message\": \"Thanks for applying, but we've moved forward with another candidate.\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/employers/me/applications/{{applicationId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "employers",
+                "me",
+                "applications",
+                "{{applicationId}}"
+              ]
+            },
+            "description": "Update the status or message for an application owned by one of the employer's jobs."
+          }
+        },
+        {
+          "name": "Hire Applicant",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{employerToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/employers/me/applications/{{applicationId}}/hire",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "employers",
+                "me",
+                "applications",
+                "{{applicationId}}",
+                "hire"
+              ]
+            },
+            "description": "Mark an application as hired. This also rejects other applicants, updates job stats, and fills the job posting."
+          }
+        },
+        {
+          "name": "List Applications For Job",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{employerToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/jobs/{{jobId}}/applications",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "jobs",
+                "{{jobId}}",
+                "applications"
+              ]
+            },
+            "description": "List applications scoped to a specific job posting owned by the authenticated employer."
+          }
+        },
+        {
+          "name": "List Employer Applications By Id",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{employerToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/employers/{{employerId}}/applications",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "employers",
+                "{{employerId}}",
+                "applications"
+              ]
+            },
+            "description": "Fetch applications for a specific employerId (useful when testing admin/impersonation scenarios)."
+          }
+        }
+      ]
+    }
+    ,
+    {
+      "name": "Attendance Management",
+      "description": "Employer-focused endpoints to schedule shifts, review daily attendance, and finalize payroll totals.",
+      "item": [
+        {
+          "name": "Get Attendance Dashboard",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{employerToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/attendance/management?date={{attendanceDate}}&status=all",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "attendance",
+                "management"
+              ],
+              "query": [
+                {
+                  "key": "date",
+                  "value": "{{attendanceDate}}"
+                },
+                {
+                  "key": "status",
+                  "value": "all"
+                }
+              ]
+            },
+            "description": "Returns attendance records formatted for the dashboard view along with summary metrics for the selected date."
+          }
+        },
+        {
+          "name": "Schedule Attendance Record",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{employerToken}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"worker\": \"{{workerId}}\",\n  \"job\": \"{{jobId}}\",\n  \"scheduledStart\": \"2024-10-01T18:00:00.000Z\",\n  \"scheduledEnd\": \"2024-10-01T22:00:00.000Z\",\n  \"hourlyRate\": 18,\n  \"notes\": \"Dinner shift coverage\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/attendance",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "attendance"
+              ]
+            },
+            "description": "Create a scheduled attendance record for a worker. Requires an employer token and valid worker/job IDs."
+          }
+        },
+        {
+          "name": "Mark Shift Complete",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{employerToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/attendance/{{attendanceRecordId}}/mark-complete",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "attendance",
+                "{{attendanceRecordId}}",
+                "mark-complete"
+              ]
+            },
+            "description": "Marks a clocked-in shift as completed using the scheduled end time to finalise hours and earnings."
+          }
+        },
+        {
+          "name": "Update Attendance Hours",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{employerToken}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"totalHours\": 4,\n  \"hourlyRate\": 18\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/attendance/{{attendanceRecordId}}/hours",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "attendance",
+                "{{attendanceRecordId}}",
+                "hours"
+              ]
+            },
+            "description": "Adjust the total hours (and optionally hourly rate) for a completed attendance record."
+          }
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "https://dhruvbackend.vercel.app/api"
+    },
+    {
+      "key": "workerToken",
+      "value": "",
+      "type": "string",
+      "description": "JWT for an authenticated worker user"
+    },
+    {
+      "key": "employerToken",
+      "value": "",
+      "type": "string",
+      "description": "JWT for an authenticated employer user"
+    },
+    {
+      "key": "jobId",
+      "value": "",
+      "type": "string",
+      "description": "ObjectId of an active job"
+    },
+    {
+      "key": "workerId",
+      "value": "",
+      "type": "string",
+      "description": "ObjectId of the worker whose applications you want to list"
+    },
+    {
+      "key": "applicationId",
+      "value": "",
+      "type": "string",
+      "description": "ObjectId of the application you want to manage"
+    },
+    {
+      "key": "employerId",
+      "value": "",
+      "type": "string",
+      "description": "ObjectId of the employer whose applications you want to list"
+    },
+    {
+      "key": "attendanceRecordId",
+      "value": "",
+      "type": "string",
+      "description": "ObjectId of the attendance record you want to manage"
+    },
+    {
+      "key": "attendanceDate",
+      "value": "2024-10-01",
+      "type": "string",
+      "description": "ISO date (YYYY-MM-DD) used when querying the attendance dashboard"
+    }
+  ]
+}

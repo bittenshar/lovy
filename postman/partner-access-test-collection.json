@@ -1,0 +1,307 @@
+{
+  "info": {
+    "name": "Partner Access Test Collection",
+    "description": "Test API operations for user jjjgmail.com accessing p@example.com's business data",
+    "version": "1.0.0"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": {
+      "token": "{{jjjgmail_token}}"
+    }
+  },
+  "variables": {
+    "baseUrl": "{{baseUrl}}",
+    "partnerEmail": "p@example.com",
+    "partnerUserId": "68e2603ede0927c265035a3a",
+    "jjjgmail_token": "TOKEN_FOR_jjjgmail.com_USER",
+    "businessId": "PARTNER_BUSINESS_ID"
+  },
+  "tests": [
+    {
+      "name": "1. Verify Team Access",
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/team/check-access/{{partnerEmail}}",
+        "description": "Check if jjjgmail.com has access to p@example.com's resources"
+      },
+      "expectedResponse": {
+        "status": 200,
+        "body": {
+          "status": "success",
+          "data": {
+            "hasAccess": true,
+            "role": "admin",
+            "permissions": {
+              "canViewBusiness": true,
+              "canEditBusiness": true,
+              "canCreateJobs": true,
+              "canViewAttendance": true
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "2. List Partner's Businesses",
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/businesses",
+        "description": "List all businesses that jjjgmail.com can access (should include partner's businesses)"
+      },
+      "expectedResponse": {
+        "status": 200,
+        "body": {
+          "status": "success",
+          "data": {
+            "businesses": ["array of businesses including partner's"]
+          }
+        }
+      }
+    },
+    {
+      "name": "3. Create Business (Test Business Creation Permission)",
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}/businesses",
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "businessName": "Test Business via Partner Access",
+          "businessType": "Restaurant",
+          "businessDescription": "Testing business creation through partner access",
+          "businessAddress": {
+            "street": "123 Test St",
+            "city": "Test City",
+            "state": "TS",
+            "zipCode": "12345",
+            "country": "Test Country"
+          },
+          "contactInformation": {
+            "phoneNumber": "+1234567890",
+            "email": "test@business.com"
+          }
+        },
+        "description": "Test if jjjgmail.com can create businesses with partner access"
+      },
+      "expectedResponse": {
+        "status": 201,
+        "body": {
+          "status": "success",
+          "message": "Business created successfully"
+        }
+      }
+    },
+    {
+      "name": "4. Update Partner's Business",
+      "request": {
+        "method": "PATCH",
+        "url": "{{baseUrl}}/businesses/{{businessId}}",
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "businessDescription": "Updated description via partner access"
+        },
+        "description": "Test if jjjgmail.com can update partner's business"
+      },
+      "expectedResponse": {
+        "status": 200,
+        "body": {
+          "status": "success",
+          "message": "Business updated successfully"
+        }
+      }
+    },
+    {
+      "name": "5. List Jobs (View Permission)",
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/jobs",
+        "description": "Test if jjjgmail.com can view jobs"
+      },
+      "expectedResponse": {
+        "status": 200,
+        "body": {
+          "status": "success",
+          "data": {
+            "jobs": ["array of jobs"]
+          }
+        }
+      }
+    },
+    {
+      "name": "6. Create Job",
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}/jobs",
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "title": "Test Job via Partner Access",
+          "description": "Testing job creation through partner access",
+          "businessId": "{{businessId}}",
+          "location": {
+            "street": "123 Job St",
+            "city": "Job City",
+            "state": "JS",
+            "zipCode": "54321"
+          },
+          "employmentType": "part_time",
+          "payRate": {
+            "amount": 15.00,
+            "currency": "USD",
+            "payPeriod": "hourly"
+          },
+          "requirements": ["Basic skills", "Reliability"],
+          "benefits": ["Flexible schedule"],
+          "isActive": true
+        },
+        "description": "Test if jjjgmail.com can create jobs with partner access"
+      },
+      "expectedResponse": {
+        "status": 201,
+        "body": {
+          "status": "success",
+          "message": "Job created successfully"
+        }
+      }
+    },
+    {
+      "name": "7. View Attendance Management",
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/attendance/management",
+        "description": "Test if jjjgmail.com can access attendance management view"
+      },
+      "expectedResponse": {
+        "status": 200,
+        "body": {
+          "status": "success",
+          "data": {
+            "attendanceRecords": ["array of attendance data"]
+          }
+        }
+      }
+    },
+    {
+      "name": "8. List All Attendance Records",
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/attendance",
+        "description": "Test if jjjgmail.com can view all attendance records"
+      },
+      "expectedResponse": {
+        "status": 200,
+        "body": {
+          "status": "success",
+          "data": {
+            "attendanceRecords": ["array"]
+          }
+        }
+      }
+    },
+    {
+      "name": "9. Search Workers by Name",
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/attendance/search/workers?name=John",
+        "description": "Test if jjjgmail.com can search workers"
+      },
+      "expectedResponse": {
+        "status": 200,
+        "body": {
+          "status": "success",
+          "data": {
+            "workers": ["array of workers"]
+          }
+        }
+      }
+    },
+    {
+      "name": "10. View Team Members",
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/businesses/{{businessId}}/team-members",
+        "description": "Test if jjjgmail.com can view business team members"
+      },
+      "expectedResponse": {
+        "status": 200,
+        "body": {
+          "status": "success",
+          "data": {
+            "teamMembers": ["array"]
+          }
+        }
+      }
+    },
+    {
+      "name": "11. My Team Access",
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/team/my-access",
+        "description": "View what access jjjgmail.com has been granted"
+      },
+      "expectedResponse": {
+        "status": 200,
+        "body": {
+          "status": "success",
+          "data": {
+            "accessRecords": ["array of access grants"]
+          }
+        }
+      }
+    },
+    {
+      "name": "12. Grant Access to Others (Test Permission)",
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}/team/grant-access",
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "userEmail": "testuser@example.com",
+          "accessLevel": "view_only",
+          "accessScope": "business_specific",
+          "businessContext": {
+            "businessId": "{{businessId}}",
+            "allBusinesses": false,
+            "canCreateNewBusiness": false,
+            "canGrantAccessToOthers": false
+          },
+          "permissions": {
+            "canViewBusiness": true,
+            "canViewJobs": true,
+            "canViewAttendance": true
+          },
+          "reason": "Testing delegation of access through partner permissions"
+        },
+        "description": "Test if jjjgmail.com can grant access to others (should work with admin role)"
+      },
+      "expectedResponse": {
+        "status": 201,
+        "body": {
+          "status": "success",
+          "message": "Team access granted"
+        }
+      }
+    }
+  ],
+  "postman_collection_instructions": {
+    "setup": [
+      "1. First, get a JWT token for user jjjgmail.com by logging in",
+      "2. Replace {{jjjgmail_token}} with the actual token",
+      "3. Replace {{businessId}} with an actual business ID from partner p@example.com",
+      "4. Run tests in sequence to verify all permissions work correctly"
+    ],
+    "notes": [
+      "All requests should succeed with 200/201 status codes",
+      "If any request fails with 403 Forbidden, check team access permissions",
+      "If requests fail with 404, verify business IDs and user existence",
+      "The user jjjgmail.com should have admin-level access to partner's resources"
+    ]
+  }
+}

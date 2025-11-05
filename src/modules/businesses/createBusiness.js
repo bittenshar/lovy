@@ -13,30 +13,31 @@ exports.createBusiness = catchAsync(async (req, res, next) => {
       owner: req.user._id,  // This comes from the auth middleware
     };
 
-    // Validate location if provided
+    // Validate and format location if provided
     if (businessData.location) {
-      const { location } = businessData;
-      
       // Required location fields
-      const requiredFields = ['line1', 'address', 'city', 'state', 'postalCode', 'country', 'latitude', 'longitude'];
-      const missingFields = requiredFields.filter(field => !location[field]);
+      const requiredFields = ['line1', 'city', 'state', 'postalCode', 'country', 'latitude', 'longitude'];
+      const missingFields = requiredFields.filter(field => !businessData.location[field]);
       
       if (missingFields.length > 0) {
         return next(new AppError(`Missing required location fields: ${missingFields.join(', ')}`, 400));
       }
 
-      // Format and set the address fields
+      // Create formatted address string
       const formattedAddress = [
-        location.line1,
-        location.city,
-        location.state,
-        location.postalCode,
-        location.country
+        businessData.location.line1,
+        businessData.location.city,
+        businessData.location.state,
+        businessData.location.postalCode,
+        businessData.location.country
       ].filter(Boolean).join(', ');
 
-      // Set both formattedAddress and address fields
-      location.formattedAddress = formattedAddress;
-      location.address = location.address || formattedAddress; // Use existing address or formatted one
+      // Update the location object in businessData
+      businessData.location = {
+        ...businessData.location,
+        formattedAddress,
+        address: businessData.location.address || businessData.location.line1
+      };
     }
 
     // Create the business

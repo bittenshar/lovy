@@ -1,0 +1,19 @@
+const testBusinessData = {
+  "name": "Test Business",
+  "description": "Test business description",
+  "owner": "YOUR_USER_ID", // Replace with actual user ID
+  "type": "Restaurant",
+  "phone": "1234567890",
+  "email": "test@business.com",
+  "location": {
+    "line1": "3 Mahaveer Nagar III Circle",
+    "address": "3 Mahaveer Nagar III Circle",
+    "city": "Kota",
+    "state": "Rajasthan",
+    "country": "India",
+    "postalCode": "324005",
+    "latitude": 25.2138156,
+    "longitude": 75.8647527,
+    "formattedAddress": "3 Mahaveer Nagar III Circle, Kota, Rajasthan 324005, India"
+  }
+}

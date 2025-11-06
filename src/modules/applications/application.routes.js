@@ -2,7 +2,7 @@ const express = require('express');
 const controller = require('./application.controller');
 const { protect } = require('../../shared/middlewares/auth.middleware');
 const { requirePermissions } = require('../../shared/middlewares/permissionMiddleware');
-const { AppError } = require('../../shared/utils/appError');
+const AppError = require('../../shared/utils/appError');
 
 const router = express.Router({ mergeParams: true });
 

@@ -1,6 +1,6 @@
 const Application = require('./application.model');
 const Job = require('../jobs/job.model');
-const Business = require('../business/business.model');
+const Business = require('../businesses/business.model');
 const WorkerProfile = require('../workers/workerProfile.model');
 const catchAsync = require('../../shared/utils/catchAsync');
 const AppError = require('../../shared/utils/appError');
@@ -272,6 +272,7 @@ exports.updateApplicationStatus = catchAsync(async (req, res, next) => {
   });
 });
 
+exports.listApplications = catchAsync(async (req, res, next) => {
   // Find applications for the authenticated worker
   const applications = await Application.find({ worker: req.user._id })
     .populate({

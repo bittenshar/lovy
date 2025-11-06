@@ -216,7 +216,7 @@ exports.listAllBusinessApplications = catchAsync(async (req, res, next) => {
     results: applications.length,
     data: { 
       applications: applications.map(app => ({
-        ...app.toObject(),
+        ...app,
         canHire: app.status === 'pending',
         canReject: app.status === 'pending'
       }))

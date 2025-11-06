@@ -151,11 +151,13 @@ exports.listWorkerApplications = catchAsync(async (req, res, next) => {
   const applications = await Application.find({ worker: req.user._id })
     .populate({
       path: 'job',
+      select: 'title description salary location status',
       populate: {
         path: 'business',
         select: 'name description logo logoSmall logoMedium logoUrl location'
       }
     })
+    .select('-__v')
     .sort({ createdAt: -1 });
 
   res.status(200).json({
@@ -180,29 +182,44 @@ exports.listBusinessApplications = catchAsync(async (req, res, next) => {
   }
 
   const applications = await Application.find({ business: businessId })
-    .populate('worker', 'firstName lastName email phone')
-    .populate('job', 'title location salary')
+    .populate({
+      path: 'worker',
+      select: 'firstName lastName email phone'
+    })
+    .populate({
+      path: 'job',
+      select: 'title location salary'
+    })
+    .select('-__v')
     .sort({ createdAt: -1 });
 
   res.status(200).json({
     status: 'success',
     results: applications.length,
-    data: { applications }
+    data: { 
+      applications: applications.map(app => ({
+        ...app.toObject(),
+        canHire: app.status === 'pending',
+        canReject: app.status === 'pending'
+      }))
+    }
   });
 });
 
 // Employers update application status (hire/reject)
 exports.updateApplicationStatus = catchAsync(async (req, res, next) => {
   const { applicationId } = req.params;
-  const { status } = req.body;
+  const { status, hiringNotes } = req.body;
 
   if (!['hired', 'rejected'].includes(status)) {
     return next(new AppError('Invalid status. Use "hired" or "rejected"', 400));
   }
 
   const application = await Application.findById(applicationId)
-    .populate('business')
-    .populate('job');
+    .populate({
+      path: 'business',
+      select: 'owner'
+    });
 
   if (!application) {
     return next(new AppError('Application not found', 404));
@@ -213,21 +230,45 @@ exports.updateApplicationStatus = catchAsync(async (req, res, next) => {
     return next(new AppError('Access denied', 403));
   }
 
+  // Check if the application can be updated
+  if (application.status !== 'pending') {
+    return next(new AppError(`Cannot ${status} application. Current status: ${application.status}`, 400));
+  }
+
   // Update application status
   application.status = status;
-  application.updatedAt = new Date();
+  if (hiringNotes) application.hiringNotes = hiringNotes;
   
   if (status === 'hired') {
     application.hiredAt = new Date();
+    application.rejectedAt = undefined;
   } else if (status === 'rejected') {
     application.rejectedAt = new Date();
+    application.hiredAt = undefined;
   }
 
   await application.save();
 
+  // Return updated application with populated fields
+  const updatedApplication = await Application.findById(applicationId)
+    .populate({
+      path: 'worker',
+      select: 'firstName lastName email phone'
+    })
+    .populate({
+      path: 'job',
+      select: 'title location salary'
+    });
+
   res.status(200).json({
     status: 'success',
-    data: { application }
+    data: { 
+      application: {
+        ...updatedApplication.toObject(),
+        canHire: updatedApplication.status === 'pending',
+        canReject: updatedApplication.status === 'pending'
+      }
+    }
   });
 });
 

@@ -12,7 +12,14 @@ router.use(protect);
 router.get('/', requirePermissions('view_applications'), controller.listApplications);
 
 // Worker routes
-router.get('/me', controller.listWorkerApplications); // Workers view their applications
+router.get('/me', (req, res, next) => {
+  // For employers, redirect to their business applications
+  if (req.user.userType === 'employer') {
+    return controller.listAllBusinessApplications(req, res, next);
+  }
+  // For workers, show their applications
+  return controller.listWorkerApplications(req, res, next);
+});
 
 // Employer routes
 router.get('/business/:businessId', requirePermissions('view_applications'), controller.listBusinessApplications); // Employers view applications for their business

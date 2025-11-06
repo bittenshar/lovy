@@ -167,7 +167,43 @@ exports.listWorkerApplications = catchAsync(async (req, res, next) => {
   });
 });
 
-// Employers view applications for their business
+// Get all applications for all businesses owned by the employer
+exports.listAllBusinessApplications = catchAsync(async (req, res, next) => {
+  if (req.user.userType !== 'employer') {
+    return next(new AppError('Access denied. Employer account required.', 403));
+  }
+
+  // Find all businesses owned by this employer
+  const businesses = await Business.find({ owner: req.user._id }).select('_id');
+  const businessIds = businesses.map(b => b._id);
+
+  // Get applications for all these businesses
+  const applications = await Application.find({ business: { $in: businessIds } })
+    .populate({
+      path: 'worker',
+      select: 'firstName lastName email phone'
+    })
+    .populate({
+      path: 'job',
+      select: 'title location salary business'
+    })
+    .select('-__v')
+    .sort({ createdAt: -1 });
+
+  res.status(200).json({
+    status: 'success',
+    results: applications.length,
+    data: { 
+      applications: applications.map(app => ({
+        ...app.toObject(),
+        canHire: app.status === 'pending',
+        canReject: app.status === 'pending'
+      }))
+    }
+  });
+});
+
+// Employers view applications for a specific business
 exports.listBusinessApplications = catchAsync(async (req, res, next) => {
   if (req.user.userType !== 'employer') {
     return next(new AppError('Access denied. Employer account required.', 403));

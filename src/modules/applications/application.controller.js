@@ -1,5 +1,6 @@
 const Application = require('./application.model');
 const Job = require('../jobs/job.model');
+const Business = require('../business/business.model');
 const WorkerProfile = require('../workers/workerProfile.model');
 const catchAsync = require('../../shared/utils/catchAsync');
 const AppError = require('../../shared/utils/appError');
@@ -142,26 +143,23 @@ exports.getWorkerApplications = catchAsync(async (req, res, next) => {
 });
 
 exports.listMyApplications = catchAsync(async (req, res, next) => {
-  // Debug logging
-  console.log('Request user:', {
-    exists: !!req.user,
-    id: req.user?._id,
-    userType: req.user?.userType,
-    headers: req.headers
-  });
-
   // Check if user exists and has a valid token
   if (!req.user || !req.user._id) {
     return next(new AppError('Authentication required', 401));
   }
 
-  // Verify user type
-  if (req.user.userType !== 'worker') {
-    console.log('User type mismatch:', {
-      expected: 'worker',
-      actual: req.user.userType
-    });
-    return next(new AppError('Only workers can view their applications', 403));
+  let query = {};
+  
+  if (req.user.userType === 'worker') {
+    // For workers, show their own applications
+    query.worker = req.user._id;
+  } else if (req.user.userType === 'employer') {
+    // For employers, show applications to their businesses
+    const businesses = await Business.find({ owner: req.user._id }).select('_id');
+    const businessIds = businesses.map(b => b._id);
+    query.business = { $in: businessIds };
+  } else {
+    return next(new AppError('Invalid user type', 403));
   }
 
   // Find applications for the authenticated worker

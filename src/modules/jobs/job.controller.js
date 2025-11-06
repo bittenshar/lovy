@@ -230,19 +230,42 @@ exports.listJobsForEmployer = catchAsync(async (req, res, next) => {
   }
 
   try {
+    // Get the ETag from request
+    const ifNoneMatch = req.header('If-None-Match');
+    
+    // Query jobs with metadata for ETag calculation
     const jobs = await Job.find(filter)
       .populate('business', BUSINESS_RESPONSE_FIELDS)
       .populate('employer', 'firstName lastName email')
-      .sort({ createdAt: -1 });
+      .sort({ createdAt: -1 })
+      .lean();
 
+    // Calculate ETag based on jobs data
+    const etag = require('crypto')
+      .createHash('md5')
+      .update(JSON.stringify(jobs))
+      .digest('hex');
+
+    // Set ETag header
+    res.set('ETag', etag);
+    
+    // If ETag matches, return 304 Not Modified
+    if (ifNoneMatch === etag) {
+      return res.status(304).end();
+    }
+
+    // Process and return full response if modified
     const out = await Promise.all(jobs.map((j) => buildJobResponse(j, req.user)));
     
-    // Only send response if it hasn't been sent yet
     if (!res.headersSent) {
-      res.status(200).json({ status: 'success', results: out.length, data: out });
+      res.status(200).json({ 
+        status: 'success', 
+        results: out.length, 
+        data: out,
+        etag: etag // Include ETag in response for debugging
+      });
     }
   } catch (error) {
-    // Only pass to error handler if headers haven't been sent
     if (!res.headersSent) {
       return next(error);
     }

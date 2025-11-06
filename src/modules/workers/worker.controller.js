@@ -4,6 +4,7 @@ const Application = require('../applications/application.model');
 const AttendanceRecord = require('../attendance/attendance.model');
 const Shift = require('../shifts/shift.model');
 const SwapRequest = require('../shifts/swapRequest.model');
+const WorkerFeedback = require('./feedback.model');
 const catchAsync = require('../../shared/utils/catchAsync');
 const AppError = require('../../shared/utils/appError');
 const { minimizeProfileImages } = require('../../shared/utils/logoUrlMinimizer');
@@ -21,6 +22,97 @@ exports.getWorkerProfile = catchAsync(async (req, res, next) => {
   const optimizedProfile = profile ? minimizeProfileImages(profile, 'worker') : null;
   
   res.status(200).json({ status: 'success', data: { user, profile: optimizedProfile } });
+});
+
+exports.getWorkerDashboard = catchAsync(async (req, res, next) => {
+  const workerId = req.user._id;
+  
+  // Get recent applications
+  const applications = await Application.find({ worker: workerId })
+    .sort({ createdAt: -1 })
+    .limit(5);
+
+  // Get upcoming shifts
+  const now = new Date();
+  const shifts = await Shift.find({
+    worker: workerId,
+    startDate: { $gte: now }
+  }).sort({ startDate: 1 }).limit(5);
+
+  // Get recent attendance
+  const attendance = await AttendanceRecord.find({ worker: workerId })
+    .sort({ date: -1 })
+    .limit(5);
+
+  // Get metrics
+  const metrics = {
+    totalApplications: await Application.countDocuments({ worker: workerId }),
+    activeApplications: await Application.countDocuments({ 
+      worker: workerId,
+      status: 'pending'
+    }),
+    completedShifts: await Shift.countDocuments({
+      worker: workerId,
+      endDate: { $lt: now }
+    }),
+    upcomingShifts: await Shift.countDocuments({
+      worker: workerId,
+      startDate: { $gte: now }
+    })
+  };
+
+  res.status(200).json({
+    status: 'success',
+    data: {
+      metrics,
+      recentApplications: applications,
+      upcomingShifts: shifts,
+      recentAttendance: attendance
+    }
+  });
+});
+
+exports.getEmploymentHistory = catchAsync(async (req, res) => {
+  const workerId = req.user._id;
+
+  // Get completed shifts grouped by business
+  const history = await Shift.aggregate([
+    { $match: { worker: workerId, status: 'completed' } },
+    { $group: {
+      _id: '$business',
+      totalShifts: { $sum: 1 },
+      totalHours: { $sum: '$hoursWorked' },
+      firstShift: { $min: '$startDate' },
+      lastShift: { $max: '$endDate' }
+    }},
+    { $lookup: {
+      from: 'businesses',
+      localField: '_id',
+      foreignField: '_id',
+      as: 'business'
+    }},
+    { $unwind: '$business' }
+  ]);
+
+  res.status(200).json({
+    status: 'success',
+    data: history
+  });
+});
+
+exports.getWorkerFeedback = catchAsync(async (req, res) => {
+  const workerId = req.user._id;
+  
+  const feedback = await WorkerFeedback.find({ worker: workerId })
+    .populate('employer', 'firstName lastName')
+    .populate('job', 'title')
+    .sort({ createdAt: -1 });
+
+  res.status(200).json({
+    status: 'success',
+    results: feedback.length,
+    data: feedback
+  });
 });
 
 exports.updateWorkerProfile = catchAsync(async (req, res, next) => {
@@ -104,10 +196,19 @@ exports.getWorkerAttendance = catchAsync(async (req, res, next) => {
 });
 
 exports.getWorkerShifts = catchAsync(async (req, res, next) => {
+  // For /me/shifts route or when accessing other workers' shifts
   const workerId = req.params.workerId || req.user._id;
+
+  // If worker tries to access another worker's shifts
   if (req.user.userType === 'worker' && req.user._id.toString() !== workerId.toString()) {
     return next(new AppError('You can only view your own shifts', 403));
   }
+
+  // If employer/admin tries to access worker shifts, they should have appropriate permissions
+  if (req.user.userType !== 'worker' && !req.user.permissions?.includes('view_shifts')) {
+    return next(new AppError('You do not have permission to view shifts', 403));
+  }
+
   const shifts = await Shift.find({ worker: workerId }).sort({ scheduledStart: 1 });
   const swapRequests = await SwapRequest.find({
     $or: [{ fromWorker: workerId }, { toWorker: workerId }]

@@ -31,21 +31,33 @@ exports.createApplication = catchAsync(async (req, res, next) => {
 
   // Get location from job or business
   const location = job.location || job.business?.location;
+  
+  if (!location || !location.latitude || !location.longitude) {
+    return next(new AppError('Job location information is required', 400));
+  }
+
+  // Ensure we have a formatted address
+  const formattedAddress = location.formattedAddress || [
+    location.line1,
+    location.city,
+    location.state,
+    location.postalCode
+  ].filter(Boolean).join(', ');
+
+  if (!formattedAddress) {
+    return next(new AppError('Location address information is incomplete', 400));
+  }
 
   const application = await Application.create({
     job: job._id,
     worker: req.user._id,
     business: job.business._id,
-    location: location ? {
-      line1: location.line1,
-      address: location.address,
-      city: location.city,
-      state: location.state,
-      postalCode: location.postalCode,
-      country: location.country,
+    location: {
       latitude: location.latitude,
-      longitude: location.longitude
-    } : undefined,
+      longitude: location.longitude,
+      formattedAddress: formattedAddress,
+      allowedRadius: location.allowedRadius || 150
+    },
     message: req.body.message || '',
     snapshot: {
       name: req.user.fullName,
@@ -67,10 +79,65 @@ exports.createApplication = catchAsync(async (req, res, next) => {
   res.status(201).json({ status: 'success', data: application });
 });
 
+exports.getWorkerApplications = catchAsync(async (req, res, next) => {
+  const { workerId } = req.params;
+
+  // Check if user exists and has a valid token
+  if (!req.user || !req.user._id) {
+    return next(new AppError('Authentication required', 401));
+  }
+
+  // Only allow workers to view their own applications or employers with proper permissions
+  if (req.user.userType === 'worker' && req.user._id.toString() !== workerId) {
+    return next(new AppError('You can only view your own applications', 403));
+  }
+
+  if (req.user.userType === 'employer' && !req.user.permissions?.includes('view_applications')) {
+    return next(new AppError('You do not have permission to view worker applications', 403));
+  }
+
+  // Find applications for the specified worker
+  const applications = await Application.find({ worker: workerId })
+    .populate({
+      path: 'job',
+      populate: {
+        path: 'business',
+        select: 'name description logo logoSmall logoMedium logoUrl location'
+      }
+    })
+    .populate('worker', 'firstName lastName email phone userType')
+    .sort({ createdAt: -1 });
+
+  if (!applications.length) {
+    return next(new AppError('No applications found for this worker', 404));
+  }
+
+  const workerProfile = await WorkerProfile.findOne({ user: workerId });
+
+  const data = applications.map(application => buildApplicationPresenter(application, {
+    workerProfile,
+    includeApplicantDetails: true
+  }));
+
+  res.status(200).json({ 
+    status: 'success', 
+    results: data.length,
+    data 
+  });
+});
+
 exports.listMyApplications = catchAsync(async (req, res, next) => {
+  // Check if user exists and has a valid token
+  if (!req.user || !req.user._id) {
+    return next(new AppError('Authentication required', 401));
+  }
+
+  // Verify user type
   if (req.user.userType !== 'worker') {
     return next(new AppError('Only workers can view their applications', 403));
   }
+
+  // Find applications for the authenticated worker
   const applications = await Application.find({ worker: req.user._id })
     .populate({
       path: 'job',

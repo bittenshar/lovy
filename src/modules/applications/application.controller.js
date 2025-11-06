@@ -142,25 +142,94 @@ exports.getWorkerApplications = catchAsync(async (req, res, next) => {
   });
 });
 
-exports.listMyApplications = catchAsync(async (req, res, next) => {
-  // Check if user exists and has a valid token
-  if (!req.user || !req.user._id) {
-    return next(new AppError('Authentication required', 401));
+// Workers view their own applications
+exports.listWorkerApplications = catchAsync(async (req, res, next) => {
+  if (req.user.userType !== 'worker') {
+    return next(new AppError('Access denied. Worker account required.', 403));
   }
 
-  let query = {};
-  
-  if (req.user.userType === 'worker') {
-    // For workers, show their own applications
-    query.worker = req.user._id;
-  } else if (req.user.userType === 'employer') {
-    // For employers, show applications to their businesses
-    const businesses = await Business.find({ owner: req.user._id }).select('_id');
-    const businessIds = businesses.map(b => b._id);
-    query.business = { $in: businessIds };
-  } else {
-    return next(new AppError('Invalid user type', 403));
+  const applications = await Application.find({ worker: req.user._id })
+    .populate({
+      path: 'job',
+      populate: {
+        path: 'business',
+        select: 'name description logo logoSmall logoMedium logoUrl location'
+      }
+    })
+    .sort({ createdAt: -1 });
+
+  res.status(200).json({
+    status: 'success',
+    results: applications.length,
+    data: { applications }
+  });
+});
+
+// Employers view applications for their business
+exports.listBusinessApplications = catchAsync(async (req, res, next) => {
+  if (req.user.userType !== 'employer') {
+    return next(new AppError('Access denied. Employer account required.', 403));
   }
+
+  const { businessId } = req.params;
+
+  // Verify business ownership
+  const business = await Business.findOne({ _id: businessId, owner: req.user._id });
+  if (!business) {
+    return next(new AppError('Business not found or access denied', 404));
+  }
+
+  const applications = await Application.find({ business: businessId })
+    .populate('worker', 'firstName lastName email phone')
+    .populate('job', 'title location salary')
+    .sort({ createdAt: -1 });
+
+  res.status(200).json({
+    status: 'success',
+    results: applications.length,
+    data: { applications }
+  });
+});
+
+// Employers update application status (hire/reject)
+exports.updateApplicationStatus = catchAsync(async (req, res, next) => {
+  const { applicationId } = req.params;
+  const { status } = req.body;
+
+  if (!['hired', 'rejected'].includes(status)) {
+    return next(new AppError('Invalid status. Use "hired" or "rejected"', 400));
+  }
+
+  const application = await Application.findById(applicationId)
+    .populate('business')
+    .populate('job');
+
+  if (!application) {
+    return next(new AppError('Application not found', 404));
+  }
+
+  // Verify business ownership
+  if (!application.business || application.business.owner.toString() !== req.user._id.toString()) {
+    return next(new AppError('Access denied', 403));
+  }
+
+  // Update application status
+  application.status = status;
+  application.updatedAt = new Date();
+  
+  if (status === 'hired') {
+    application.hiredAt = new Date();
+  } else if (status === 'rejected') {
+    application.rejectedAt = new Date();
+  }
+
+  await application.save();
+
+  res.status(200).json({
+    status: 'success',
+    data: { application }
+  });
+});
 
   // Find applications for the authenticated worker
   const applications = await Application.find({ worker: req.user._id })

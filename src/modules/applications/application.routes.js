@@ -11,8 +11,12 @@ router.use(protect);
 // Application management routes with permission protection
 router.get('/', requirePermissions('view_applications'), controller.listApplications);
 
-// Workers can see and manage their own applications
-router.get('/me', controller.listMyApplications);
+// Worker routes
+router.get('/me', controller.listWorkerApplications); // Workers view their applications
+
+// Employer routes
+router.get('/business/:businessId', requirePermissions('view_applications'), controller.listBusinessApplications); // Employers view applications for their business
+router.patch('/:applicationId/status', requirePermissions('manage_applications'), controller.updateApplicationStatus); // Employers update application status (hire/reject)
 router.get('/worker/:workerId', requirePermissions('view_applications'), controller.getWorkerApplications);
 
 // Application status management

@@ -142,6 +142,14 @@ exports.getWorkerApplications = catchAsync(async (req, res, next) => {
 });
 
 exports.listMyApplications = catchAsync(async (req, res, next) => {
+  // Debug logging
+  console.log('Request user:', {
+    exists: !!req.user,
+    id: req.user?._id,
+    userType: req.user?.userType,
+    headers: req.headers
+  });
+
   // Check if user exists and has a valid token
   if (!req.user || !req.user._id) {
     return next(new AppError('Authentication required', 401));
@@ -149,6 +157,10 @@ exports.listMyApplications = catchAsync(async (req, res, next) => {
 
   // Verify user type
   if (req.user.userType !== 'worker') {
+    console.log('User type mismatch:', {
+      expected: 'worker',
+      actual: req.user.userType
+    });
     return next(new AppError('Only workers can view their applications', 403));
   }
 

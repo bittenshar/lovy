@@ -169,15 +169,27 @@ exports.listWorkerApplications = catchAsync(async (req, res, next) => {
 
 // Get all applications for all businesses owned by the employer
 exports.listAllBusinessApplications = catchAsync(async (req, res, next) => {
+  console.log('Debug - User:', {
+    id: req.user._id,
+    type: req.user.userType
+  });
+
   if (req.user.userType !== 'employer') {
     return next(new AppError('Access denied. Employer account required.', 403));
   }
 
   // Find all businesses owned by this employer
-  const businesses = await Business.find({ owner: req.user._id }).select('_id');
+  const businesses = await Business.find({ owner: req.user._id });
+  console.log('Debug - Found businesses:', businesses.map(b => ({
+    id: b._id,
+    name: b.name
+  })));
+  
   const businessIds = businesses.map(b => b._id);
 
   // Get applications for all these businesses
+  console.log('Debug - Looking for applications with businessIds:', businessIds);
+  
   const applications = await Application.find({ business: { $in: businessIds } })
     .populate({
       path: 'worker',
@@ -187,8 +199,17 @@ exports.listAllBusinessApplications = catchAsync(async (req, res, next) => {
       path: 'job',
       select: 'title location salary business'
     })
+    .populate('business', 'name')
     .select('-__v')
-    .sort({ createdAt: -1 });
+    .sort({ createdAt: -1 })
+    .lean();
+
+  console.log('Debug - Found applications:', applications.map(app => ({
+    id: app._id,
+    businessId: app.business?._id,
+    jobId: app.job?._id,
+    status: app.status
+  })));
 
   res.status(200).json({
     status: 'success',

@@ -48,5 +48,6 @@ const applicationSchema = new mongoose.Schema(
 );
 
 applicationSchema.index({ job: 1, worker: 1 }, { unique: true });
+applicationSchema.index({ business: 1 }); // Add index for business lookups
 
 module.exports = mongoose.model('Application', applicationSchema);

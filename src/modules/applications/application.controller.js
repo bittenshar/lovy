@@ -247,17 +247,20 @@ exports.listAllBusinessApplications = catchAsync(async (req, res, next) => {
       status: app.status
     })));
 
-    res.status(200).json({
-      status: 'success',
-      results: applications.length,
-      data: { 
-        applications: applications.map(app => ({
-          ...app,
-          canHire: app.status === 'pending',
-          canReject: app.status === 'pending'
-        }))
-      }
-    });
+    // Only send response if headers haven't been sent
+    if (!res.headersSent) {
+      res.status(200).json({
+        status: 'success',
+        results: applications.length,
+        data: { 
+          applications: applications.map(app => ({
+            ...app,
+            canHire: app.status === 'pending',
+            canReject: app.status === 'pending'
+          }))
+        }
+      });
+    }
   } catch (error) {
     console.error('Error in listAllBusinessApplications:', error);
     if (error.message === 'Operation timed out') {

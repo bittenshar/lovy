@@ -180,14 +180,20 @@ exports.listAllBusinessApplications = catchAsync(async (req, res, next) => {
 
   // Set timeout for the entire operation
   const timeoutPromise = new Promise((_, reject) => 
-    setTimeout(() => reject(new Error('Operation timed out')), 20000)
+    setTimeout(() => reject(new Error('Operation timed out')), 10000)
   );
 
   try {
-    // Find all businesses owned by this employer with projection
-    const businesses = await Promise.race([
-      timeoutPromise,
-      Business.find({ owner: req.user._id }, '_id name').lean()
+    // Find all active businesses owned by this employer with projection
+    const [businesses, activeApplicationsCount] = await Promise.all([
+      Business.find(
+        { owner: req.user._id, isActive: true }, 
+        '_id name'
+      ).lean(),
+      Application.countDocuments({ 
+        business: { $in: await Business.distinct('_id', { owner: req.user._id, isActive: true }) },
+        status: 'pending'
+      })
     ]);
 
     console.log('Debug - Found businesses:', businesses.map(b => ({
@@ -208,9 +214,17 @@ exports.listAllBusinessApplications = catchAsync(async (req, res, next) => {
     // Get applications for all these businesses with optimized query
     console.log('Debug - Looking for applications with businessIds:', businessIds);
     
+    // Use Promise.race with timeout
     const applications = await Promise.race([
       timeoutPromise,
-      Application.find({ business: { $in: businessIds } })
+      Application.find(
+        { 
+          business: { $in: businessIds },
+          // Optional: Add status filter if you mainly care about pending applications
+          // status: 'pending'
+        },
+        'status createdAt message business job worker' // Specify exact fields needed
+      )
         .populate({
           path: 'worker',
           select: 'firstName lastName email phone -_id'
@@ -220,9 +234,9 @@ exports.listAllBusinessApplications = catchAsync(async (req, res, next) => {
           select: 'title location.formattedAddress salary -_id'
         })
         .populate('business', 'name -_id')
-        .select('status createdAt message')
         .sort({ createdAt: -1 })
         .lean()
+        .limit(100) // Add a reasonable limit
         .exec()
     ]);
 

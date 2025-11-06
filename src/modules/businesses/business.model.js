@@ -139,19 +139,7 @@ businessSchema.pre('save', function (next) {
   next();
 });
 
-module.exports = mongoose.model('Business', businessSchema);
-  
-
-
-
-businessSchema.pre('save', function (next) {
-  if (this.isModified('logo') || this.isModified('logoUrl')) {
-    this.logoSmall = undefined;
-    this.logoMedium = undefined;
-    this.logoSignature = undefined;
-    this.logoOptimizedAt = undefined;
-  }
-  next();
-});
+// Add index for faster owner queries
+businessSchema.index({ owner: 1, isActive: 1 });
 
 module.exports = mongoose.model('Business', businessSchema);

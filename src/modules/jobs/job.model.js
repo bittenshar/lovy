@@ -27,28 +27,8 @@ const overtimeSchema = new mongoose.Schema(
   { _id: false }
 );
 
-const locationSchema = new mongoose.Schema(
-  {
-    line1: { type: String, required: true },
-    address: { type: String, required: true },
-    city: { type: String, required: true },
-    state: { type: String, required: true },
-    postalCode: { type: String, required: true },
-    country: { type: String, required: true },
-    latitude: { type: Number, required: true },
-    longitude: { type: Number, required: true },
-    formattedAddress: { type: String, required: true },
-    allowedRadius: { type: Number, default: 150 },
-    name: String,
-    notes: String,
-    timezone: String,
-    isActive: { type: Boolean, default: true },
-    placeId: String,
-    setBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
-    setAt: { type: Date, default: Date.now },
-  },
-  { _id: false }
-);
+const simpleLocationSchema = require('../../shared/schemas/simpleLocation.schema');
+
 
 const jobSchema = new mongoose.Schema(
   {
@@ -65,8 +45,9 @@ const jobSchema = new mongoose.Schema(
     tags: { type: [String], default: [] },
 
     schedule: scheduleSchema,
-    location: { type: locationSchema, required: true },
-
+    location: { type: simpleLocationSchema, required: true },
+    businessAddress: { type: String },
+    
     verificationRequired: { type: Boolean, default: false },
     premiumRequired: { type: Boolean, default: false },
 
@@ -94,47 +75,33 @@ const jobSchema = new mongoose.Schema(
 jobSchema.index({ employer: 1, status: 1 });
 jobSchema.index({ 'location.latitude': 1, 'location.longitude': 1 });
 
-jobSchema.pre('save', async function jobLocationAutofill(next) {
+jobSchema.pre('save', async function(next) {
   try {
     if (!this.business) {
       throw new Error('Business ID is required');
     }
 
-    // If no location is provided, try to get it from the business
+    // If no location is provided, get it from the business
     if (!this.location) {
       const business = await Business.findById(this.business).lean();
       if (!business || !business.location) {
         throw new Error('Job location is required. Either provide location in the job or set a location for the business.');
       }
 
-      const derived = deriveBusinessLocation({
-        business,
-        addressOverride: null,
-      });
-
-      if (!derived) {
-        throw new Error('Unable to derive location from business. Please provide location details.');
-      }
-
-      this.location = derived;
+      // Extract only the required fields from business location
+      this.location = {
+        latitude: business.location.latitude,
+        longitude: business.location.longitude,
+        formattedAddress: business.location.formattedAddress,
+        allowedRadius: business.location.allowedRadius || 150
+      };
+      
+      // Store the business address separately
+      this.businessAddress = business.location.formattedAddress;
     }
-
-    // Ensure all required fields are present
-    const requiredFields = ['line1', 'address', 'city', 'state', 'postalCode', 'country', 'latitude', 'longitude'];
-    const missingFields = requiredFields.filter(field => !this.location[field]);
-    
-    if (missingFields.length > 0) {
-      throw new Error(`Missing required location fields: ${missingFields.join(', ')}`);
-    }
-
-    // Generate formatted address if not provided
-    if (!this.location.formattedAddress) {
-      this.location.formattedAddress = buildLocationAddressString(this.location);
-    }
-
     next();
-  } catch (err) {
-    next(err);
+  } catch (error) {
+    next(error);
   }
 });
 

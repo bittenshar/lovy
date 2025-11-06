@@ -1,37 +1,8 @@
 const mongoose = require('mongoose');
 
-// Location schema for storing latitude/longitude coordinates
-const locationSchema = new mongoose.Schema({
-  latitude: { type: Number, required: true },
-  longitude: { type: Number, required: true },
-  address: String,
-  accuracy: Number, // GPS accuracy in meters
-  timestamp: Date,
-  altitude: Number,
-  heading: Number,
-  speed: Number
-}, { _id: false });
 
 // Job location schema with geofencing radius
-const jobLocationSchema = new mongoose.Schema({
-  line1: String,
-  address: String,
-  city: String,
-  state: String,
-  postalCode: String,
-  country: String,
-  latitude: { type: Number, required: true },
-  longitude: { type: Number, required: true },
-  accuracy: Number,
-  timestamp: Date,
-  altitude: Number,
-  heading: Number,
-  speed: Number,
-  allowedRadius: { type: Number, default: 100 }, // Radius in meters for attendance validation
-  name: String, // Location name (e.g., "Main Office", "Warehouse A")
-  description: String,
-  isActive: { type: Boolean, default: true }
-}, { _id: false });
+const simpleLocationSchema = require('../../shared/schemas/simpleLocation.schema');
 
 const attendanceSchema = new mongoose.Schema(
   {
@@ -71,9 +42,9 @@ const attendanceSchema = new mongoose.Schema(
     locationSnapshot: String,
     
     // Location tracking fields
-    jobLocation: jobLocationSchema, // The designated job location with geofencing
-    clockInLocation: locationSchema, // Where the worker clocked in
-    clockOutLocation: locationSchema, // Where the worker clocked out
+    jobLocation: simpleLocationSchema, // The designated job location with geofencing
+    clockInLocation: simpleLocationSchema, // Where the worker clocked in
+    clockOutLocation: simpleLocationSchema, // Where the worker clocked out
     locationValidated: { type: Boolean }, // Whether location validation passed
     locationValidationMessage: String, // Validation result message
     clockInDistance: Number, // Distance from job location when clocking in (meters)

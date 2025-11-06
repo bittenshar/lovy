@@ -1,18 +1,7 @@
 const mongoose = require('mongoose');
 
-const locationSchema = new mongoose.Schema(
-  {
-    line1: String,
-    address: String,
-    city: String,
-    state: String,
-    postalCode: String,
-    country: String,
-    latitude: Number,
-    longitude: Number
-  },
-  { _id: false }
-);
+
+const simpleLocationSchema = require('../../shared/schemas/simpleLocation.schema');
 
 const snapshotSchema = new mongoose.Schema(
   {
@@ -37,7 +26,7 @@ const applicationSchema = new mongoose.Schema(
       ref: 'Business',
       required: true
     },
-    location: locationSchema,
+    location: simpleLocationSchema,
     worker: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',

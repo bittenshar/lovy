@@ -229,13 +229,25 @@ exports.listJobsForEmployer = catchAsync(async (req, res, next) => {
     filter.business = req.query.businessId;
   }
 
-  const jobs = await Job.find(filter)
-    .populate('business', BUSINESS_RESPONSE_FIELDS)
-    .populate('employer', 'firstName lastName email')
-    .sort({ createdAt: -1 });
+  try {
+    const jobs = await Job.find(filter)
+      .populate('business', BUSINESS_RESPONSE_FIELDS)
+      .populate('employer', 'firstName lastName email')
+      .sort({ createdAt: -1 });
 
-  const out = await Promise.all(jobs.map((j) => buildJobResponse(j, req.user)));
-  res.status(200).json({ status: 'success', results: out.length, data: out });
+    const out = await Promise.all(jobs.map((j) => buildJobResponse(j, req.user)));
+    
+    // Only send response if it hasn't been sent yet
+    if (!res.headersSent) {
+      res.status(200).json({ status: 'success', results: out.length, data: out });
+    }
+  } catch (error) {
+    // Only pass to error handler if headers haven't been sent
+    if (!res.headersSent) {
+      return next(error);
+    }
+    console.error('Error after headers sent:', error);
+  }
 });
 
 /**

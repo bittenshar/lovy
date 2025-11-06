@@ -13,11 +13,17 @@ router.get('/', requirePermissions('view_applications'), controller.listApplicat
 
 // Workers can see and manage their own applications
 router.get('/me', (req, res, next) => {
-  if (req.user.userType !== 'worker') {
-    return next(new AppError('Access denied', 403));
+  if (!req.user) {
+    return next(new AppError('Authentication required', 401));
   }
+  
+  if (req.user.userType !== 'worker') {
+    console.log('Access denied - User type:', req.user.userType); // Debug log
+    return next(new AppError('This endpoint is only accessible to workers', 403));
+  }
+  
   return controller.listMyApplications(req, res, next);
-}); 
+});
 router.get('/worker/:workerId', requirePermissions('view_applications'), controller.getWorkerApplications);
 
 // Application status management

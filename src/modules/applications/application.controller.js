@@ -178,50 +178,82 @@ exports.listAllBusinessApplications = catchAsync(async (req, res, next) => {
     return next(new AppError('Access denied. Employer account required.', 403));
   }
 
-  // Find all businesses owned by this employer
-  const businesses = await Business.find({ owner: req.user._id });
-  console.log('Debug - Found businesses:', businesses.map(b => ({
-    id: b._id,
-    name: b.name
-  })));
-  
-  const businessIds = businesses.map(b => b._id);
+  // Set timeout for the entire operation
+  const timeoutPromise = new Promise((_, reject) => 
+    setTimeout(() => reject(new Error('Operation timed out')), 20000)
+  );
 
-  // Get applications for all these businesses
-  console.log('Debug - Looking for applications with businessIds:', businessIds);
-  
-  const applications = await Application.find({ business: { $in: businessIds } })
-    .populate({
-      path: 'worker',
-      select: 'firstName lastName email phone'
-    })
-    .populate({
-      path: 'job',
-      select: 'title location salary business'
-    })
-    .populate('business', 'name')
-    .select('-__v')
-    .sort({ createdAt: -1 })
-    .lean();
+  try {
+    // Find all businesses owned by this employer with projection
+    const businesses = await Promise.race([
+      timeoutPromise,
+      Business.find({ owner: req.user._id }, '_id name').lean()
+    ]);
 
-  console.log('Debug - Found applications:', applications.map(app => ({
-    id: app._id,
-    businessId: app.business?._id,
-    jobId: app.job?._id,
-    status: app.status
-  })));
-
-  res.status(200).json({
-    status: 'success',
-    results: applications.length,
-    data: { 
-      applications: applications.map(app => ({
-        ...app,
-        canHire: app.status === 'pending',
-        canReject: app.status === 'pending'
-      }))
+    console.log('Debug - Found businesses:', businesses.map(b => ({
+      id: b._id,
+      name: b.name
+    })));
+    
+    if (!businesses || businesses.length === 0) {
+      return res.status(200).json({
+        status: 'success',
+        results: 0,
+        data: { applications: [] }
+      });
     }
-  });
+
+    const businessIds = businesses.map(b => b._id);
+
+    // Get applications for all these businesses with optimized query
+    console.log('Debug - Looking for applications with businessIds:', businessIds);
+    
+    const applications = await Promise.race([
+      timeoutPromise,
+      Application.find({ business: { $in: businessIds } })
+        .populate({
+          path: 'worker',
+          select: 'firstName lastName email phone -_id'
+        })
+        .populate({
+          path: 'job',
+          select: 'title location.formattedAddress salary -_id'
+        })
+        .populate('business', 'name -_id')
+        .select('status createdAt message')
+        .sort({ createdAt: -1 })
+        .lean()
+        .exec()
+    ]);
+
+    console.log('Debug - Found applications:', applications.map(app => ({
+      id: app._id,
+      businessId: app.business?._id,
+      jobId: app.job?._id,
+      status: app.status
+    })));
+
+    res.status(200).json({
+      status: 'success',
+      results: applications.length,
+      data: { 
+        applications: applications.map(app => ({
+          ...app,
+          canHire: app.status === 'pending',
+          canReject: app.status === 'pending'
+        }))
+      }
+    });
+  } catch (error) {
+    console.error('Error in listAllBusinessApplications:', error);
+    if (error.message === 'Operation timed out') {
+      return res.status(408).json({
+        status: 'error',
+        message: 'Request timeout while fetching applications'
+      });
+    }
+    next(error);
+  }
 });
 
 // Employers view applications for a specific business

@@ -67,13 +67,6 @@ exports.protect = catchAsync(async (req, res, next) => {
     currentUser.lastActiveAt = new Date();
     await currentUser.save({ validateBeforeSave: false });
 
-    // Debug logging
-    console.log('Setting user in request:', {
-      id: currentUser._id,
-      userType: currentUser.userType,
-      decodedToken: decoded
-    });
-
     req.user = currentUser;
     next();
   } catch (error) {

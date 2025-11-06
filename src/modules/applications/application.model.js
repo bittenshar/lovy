@@ -48,7 +48,5 @@ const applicationSchema = new mongoose.Schema(
 );
 
 applicationSchema.index({ job: 1, worker: 1 }, { unique: true });
-applicationSchema.index({ business: 1, createdAt: -1 }); // Compound index for business lookup with sort
-applicationSchema.index({ business: 1, status: 1 }); // Index for status queries
 
 module.exports = mongoose.model('Application', applicationSchema);

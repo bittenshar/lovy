@@ -11,19 +11,21 @@ router.use(protect);
 // Application management routes with permission protection
 router.get('/', requirePermissions('view_applications'), controller.listApplications);
 
-// Worker routes
-router.get('/me', (req, res, next) => {
-  // For employers, redirect to their business applications
-  if (req.user.userType === 'employer') {
-    return controller.listAllBusinessApplications(req, res, next);
+// Employer-specific applications route
+router.get('/employer', (req, res, next) => {
+  if (req.user.userType !== 'employer') {
+    return next(new AppError('Access denied - only employers can view job applications', 403));
   }
-  // For workers, show their applications
-  return controller.listWorkerApplications(req, res, next);
+  return controller.listApplications(req, res, next);
 });
 
-// Employer routes
-router.get('/business/:businessId', requirePermissions('view_applications'), controller.listBusinessApplications); // Employers view applications for their business
-router.patch('/:applicationId/status', requirePermissions('manage_applications'), controller.updateApplicationStatus); // Employers update application status (hire/reject)
+// Workers can see and manage their own applications
+router.get('/me', (req, res, next) => {
+  if (req.user.userType !== 'worker') {
+    return next(new AppError(`Access denied - only workers can view their applications. Current user type: ${req.user.userType}`, 403));
+  }
+  return controller.listMyApplications(req, res, next);
+}); 
 router.get('/worker/:workerId', requirePermissions('view_applications'), controller.getWorkerApplications);
 
 // Application status management

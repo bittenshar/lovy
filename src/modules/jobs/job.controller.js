@@ -44,22 +44,6 @@ const normalizeLogoUrl = (b) =>
   b?.logo?.square?.url || b?.logo?.original?.url || b?.logoUrl || null;
 
 // Make a predictable job DTO for clients (worker/employer)
-// List jobs for worker with proper caching
-exports.listJobsForWorker = catchAsync(async (req, res, next) => {
-  // Set cache control for worker view
-  res.set('Cache-Control', 'no-store');
-  
-  // ... rest of the worker listing logic
-});
-
-// List jobs for employer with proper caching
-exports.listJobsForEmployer = catchAsync(async (req, res, next) => {
-  // Set cache control for employer view
-  res.set('Cache-Control', 'no-cache, must-revalidate');
-  
-  // ... rest of the employer listing logic
-});
-
 const buildJobResponse = async (job, currentUser) => {
   const j = job.toObject({ virtuals: true });
 
@@ -262,21 +246,21 @@ exports.listJobsForEmployer = catchAsync(async (req, res, next) => {
       .update(JSON.stringify(jobs))
       .digest('hex');
 
-    // Check ETag before setting any headers
+    // Set ETag header
+    res.set('ETag', etag);
+    
+    // If ETag matches, return 304 Not Modified
     if (ifNoneMatch === etag) {
       return res.status(304).end();
     }
-    
-    // Set cache headers only if response hasn't been sent
-    if (!res.headersSent) {
-      res.set({
-        'ETag': etag,
-        'Cache-Control': 'no-cache, must-revalidate'
-      });
-    }
 
     // Process and return full response if modified
-    const out = await Promise.all(jobs.map((j) => buildJobResponse(j, req.user)));
+    // Convert plain objects to Mongoose documents if needed
+    const jobDocuments = jobs.map(job => 
+      job instanceof mongoose.Model ? job : new Job(job)
+    );
+    
+    const out = await Promise.all(jobDocuments.map((j) => buildJobResponse(j, req.user)));
     
     if (!res.headersSent) {
       res.status(200).json({ 

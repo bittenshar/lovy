@@ -30,34 +30,49 @@ exports.createApplication = catchAsync(async (req, res, next) => {
   const profile = await WorkerProfile.findOne({ user: req.user._id });
 
   // Get location from job or business
-  const location = job.location || job.business?.location;
+  // Get location from job or business and ensure it's complete
+  const jobLocation = job.location || job.business?.location;
   
-  if (!location || !location.latitude || !location.longitude) {
+  if (!jobLocation) {
     return next(new AppError('Job location information is required', 400));
   }
 
-  // Ensure we have a formatted address
-  const formattedAddress = location.formattedAddress || [
-    location.line1,
-    location.city,
-    location.state,
-    location.postalCode
-  ].filter(Boolean).join(', ');
+  // Construct a complete location object
+  const locationData = {
+    latitude: parseFloat(jobLocation.latitude) || 0,
+    longitude: parseFloat(jobLocation.longitude) || 0,
+    formattedAddress: jobLocation.formattedAddress || [
+      jobLocation.line1,
+      jobLocation.city,
+      jobLocation.state,
+      jobLocation.postalCode,
+      jobLocation.country
+    ].filter(Boolean).join(', '),
+    allowedRadius: parseInt(jobLocation.allowedRadius, 10) || 150
+  };
 
-  if (!formattedAddress) {
-    return next(new AppError('Location address information is incomplete', 400));
+  // Validate location data
+  if (!locationData.latitude || !locationData.longitude) {
+    return next(new AppError('Valid location coordinates are required', 400));
+  }
+
+  if (!locationData.formattedAddress) {
+    if (jobLocation.line1 || jobLocation.city || jobLocation.state) {
+      locationData.formattedAddress = [
+        jobLocation.line1,
+        jobLocation.city,
+        jobLocation.state
+      ].filter(Boolean).join(', ');
+    } else {
+      locationData.formattedAddress = `${jobLocation.latitude}, ${jobLocation.longitude}`;
+    }
   }
 
   const application = await Application.create({
     job: job._id,
     worker: req.user._id,
     business: job.business._id,
-    location: {
-      latitude: location.latitude,
-      longitude: location.longitude,
-      formattedAddress: formattedAddress,
-      allowedRadius: location.allowedRadius || 150
-    },
+    location: locationData,
     message: req.body.message || '',
     snapshot: {
       name: req.user.fullName,

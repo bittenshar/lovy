@@ -14,11 +14,19 @@ const ensureViewJobs = (req, res, next) => {
   return requirePermissions('view_jobs')(req, res, next);
 };
 
-// Worker view
-router.get('/worker', protect, controller.listJobsForWorker);
+// Worker view - with proper cache control
+router.get('/worker', protect, (req, res, next) => {
+  // Disable caching for worker job list to ensure fresh data
+  res.set('Cache-Control', 'no-store');
+  controller.listJobsForWorker(req, res, next);
+});
 
-// Employer view
-router.get('/employer', protect, requirePermissions('view_jobs'), controller.listJobsForEmployer);
+// Employer view with cache control
+router.get('/employer', protect, requirePermissions('view_jobs'), (req, res, next) => {
+  // Set proper cache control for employer view
+  res.set('Cache-Control', 'no-cache, must-revalidate');
+  return controller.listJobsForEmployer(req, res, next);
+});
 
 // CRUD
 router.get('/', protect, controller.listJobsForEmployer); // optional: default employer list

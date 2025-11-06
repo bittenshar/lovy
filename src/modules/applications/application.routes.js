@@ -11,8 +11,13 @@ router.use(protect);
 router.get('/', requirePermissions('view_applications'), controller.listApplications);
 
 // Workers can see and manage their own applications
-router.get('/me', protect, controller.listMyApplications); 
-router.get('/worker/:workerId', protect, controller.getWorkerApplications);
+router.get('/me', (req, res, next) => {
+  if (req.user.userType !== 'worker') {
+    return next(new AppError('Access denied', 403));
+  }
+  return controller.listMyApplications(req, res, next);
+}); 
+router.get('/worker/:workerId', requirePermissions('view_applications'), controller.getWorkerApplications);
 
 // Application status management
 router.patch('/:applicationId', requirePermissions('manage_applications'), controller.updateApplication);

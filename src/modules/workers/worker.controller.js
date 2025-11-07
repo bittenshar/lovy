@@ -1,3 +1,4 @@
+const mongoose = require('mongoose');
 const WorkerProfile = require('./workerProfile.model');
 const User = require('../users/user.model');
 const Application = require('../applications/application.model');
@@ -9,6 +10,11 @@ const catchAsync = require('../../shared/utils/catchAsync');
 const AppError = require('../../shared/utils/appError');
 const { minimizeProfileImages } = require('../../shared/utils/logoUrlMinimizer');
 const { buildApplicationPresenter } = require('../applications/application.presenter');
+const {
+  mapRecordToScheduleEntry,
+  buildSectionTotals,
+  buildStatusCounter
+} = require('../attendance/attendanceSchedule.utils');
 
 exports.getWorkerProfile = catchAsync(async (req, res, next) => {
   const workerId = req.params.workerId || req.user._id;
@@ -193,6 +199,191 @@ exports.getWorkerAttendance = catchAsync(async (req, res, next) => {
   }
   const records = await AttendanceRecord.find(filter).sort({ scheduledStart: -1 });
   res.status(200).json({ status: 'success', results: records.length, data: records });
+});
+
+exports.getWorkerAttendanceSchedule = catchAsync(async (req, res, next) => {
+  const requestedWorkerId = req.params.workerId || req.user._id.toString();
+
+  if (req.user.userType === 'worker' && req.user._id.toString() !== requestedWorkerId.toString()) {
+    return next(new AppError('You can only view your own schedule', 403));
+  }
+  if (!req.params.workerId && req.user.userType !== 'worker') {
+    return next(new AppError('Employers must specify a workerId to view schedules', 400));
+  }
+  if (req.params.workerId && !mongoose.Types.ObjectId.isValid(req.params.workerId)) {
+    return next(new AppError('Invalid workerId parameter', 400));
+  }
+
+  const worker = await User.findById(requestedWorkerId);
+  if (!worker || worker.userType !== 'worker') {
+    return next(new AppError('Worker not found', 404));
+  }
+
+  const statusFilter = (req.query.status || 'all')
+    .toString()
+    .trim()
+    .toLowerCase()
+    .replace(/_/g, '-');
+  const allowedStatuses = new Set(['scheduled', 'clocked-in', 'completed', 'missed', 'all']);
+  if (!allowedStatuses.has(statusFilter)) {
+    return next(new AppError('Invalid status filter', 400));
+  }
+
+  const filter = { worker: worker._id };
+  if (statusFilter !== 'all') {
+    filter.status = statusFilter;
+  }
+  if (req.query.jobId) {
+    filter.job = req.query.jobId;
+  }
+  if (req.query.businessId) {
+    filter.business = req.query.businessId;
+  }
+
+  const parseBoundary = (value, boundary) => {
+    if (!value) {
+      return null;
+    }
+    const date = new Date(value);
+    if (Number.isNaN(date.valueOf())) {
+      return null;
+    }
+    if (boundary === 'start') {
+      date.setHours(0, 0, 0, 0);
+    } else {
+      date.setHours(23, 59, 59, 999);
+    }
+    return date;
+  };
+
+  const fromBoundary = parseBoundary(req.query.from, 'start');
+  const toBoundary = parseBoundary(req.query.to, 'end');
+
+  if (req.query.from && !fromBoundary) {
+    return next(new AppError('Invalid from parameter', 400));
+  }
+  if (req.query.to && !toBoundary) {
+    return next(new AppError('Invalid to parameter', 400));
+  }
+
+  if (fromBoundary || toBoundary) {
+    filter.scheduledStart = {};
+    if (fromBoundary) {
+      filter.scheduledStart.$gte = fromBoundary;
+    }
+    if (toBoundary) {
+      filter.scheduledStart.$lte = toBoundary;
+    }
+  }
+
+  const records = await AttendanceRecord.find(filter)
+    .populate([
+      {
+        path: 'job',
+        select: 'title hourlyRate location business businessAddress',
+        populate: { path: 'business', select: 'name' }
+      },
+      { path: 'business', select: 'name' }
+    ])
+    .sort({ scheduledStart: 1 })
+    .lean();
+
+  const now = new Date();
+  const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const endOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
+
+  const entries = records
+    .map((record) => mapRecordToScheduleEntry(record, { now, startOfToday, endOfToday }))
+    .filter(Boolean);
+
+  const statusCounts = buildStatusCounter();
+  let pastCount = 0;
+  let upcomingCount = 0;
+  let firstUpcomingDate = null;
+  let lastPastDate = null;
+  let rangeStart = null;
+  let rangeEnd = null;
+
+  entries.forEach((entry) => {
+    if (entry.status) {
+      statusCounts[entry.status] = (statusCounts[entry.status] || 0) + 1;
+    }
+    if (entry.isPast) {
+      pastCount += 1;
+      if (!lastPastDate || entry.date > lastPastDate) {
+        lastPastDate = entry.date;
+      }
+    } else {
+      upcomingCount += 1;
+      if (!firstUpcomingDate || entry.date < firstUpcomingDate) {
+        firstUpcomingDate = entry.date;
+      }
+    }
+    if (!rangeStart || entry.date < rangeStart) {
+      rangeStart = entry.date;
+    }
+    if (!rangeEnd || entry.date > rangeEnd) {
+      rangeEnd = entry.date;
+    }
+  });
+
+  const grouped = new Map();
+  entries.forEach((entry) => {
+    if (!grouped.has(entry.date)) {
+      grouped.set(entry.date, {
+        date: entry.date,
+        dayOfWeek: entry.dayOfWeek,
+        isPast: entry.isPast,
+        isUpcoming: entry.isUpcoming,
+        isFuture: entry.isFuture,
+        isToday: entry.isToday,
+        hasInProgress: entry.isInProgress,
+        entries: []
+      });
+    }
+    const group = grouped.get(entry.date);
+    if (group.entries.length > 0) {
+      group.isPast = group.isPast && entry.isPast;
+      group.isUpcoming = group.isUpcoming || entry.isUpcoming;
+      group.isFuture = group.isFuture && entry.isFuture;
+      group.isToday = group.isToday || entry.isToday;
+    }
+    group.hasInProgress = group.hasInProgress || entry.isInProgress;
+    group.entries.push(entry);
+  });
+
+  const schedule = Array.from(grouped.values())
+    .map((group) => ({
+      ...group,
+      totals: buildSectionTotals(group.entries)
+    }))
+    .sort((a, b) => a.date.localeCompare(b.date));
+
+  const byStatus = Object.entries(statusCounts).reduce((acc, [key, value]) => {
+    if (value > 0) {
+      acc[key] = value;
+    }
+    return acc;
+  }, {});
+
+  const summary = {
+    totalRecords: entries.length,
+    pastCount,
+    upcomingCount,
+    byStatus,
+    firstUpcomingDate,
+    lastPastDate,
+    range: entries.length ? { start: rangeStart, end: rangeEnd } : null
+  };
+
+  res.status(200).json({
+    status: 'success',
+    data: {
+      workerId: worker._id.toString(),
+      summary,
+      schedule
+    }
+  });
 });
 
 exports.getWorkerShifts = catchAsync(async (req, res, next) => {

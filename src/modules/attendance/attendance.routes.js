@@ -7,6 +7,7 @@ const router = express.Router();
 router.use(protect);
 router.get('/management', restrictTo('employer'), controller.getManagementView);
 router.get('/', controller.listAttendance);
+router.get('/:recordId', controller.getAttendanceRecord);
 router.post('/', restrictTo('employer'), controller.scheduleAttendance);
 router.post('/:recordId/clock-in', controller.clockIn);
 router.post('/:recordId/clock-out', controller.clockOut);

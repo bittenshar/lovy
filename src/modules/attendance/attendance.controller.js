@@ -80,57 +80,163 @@ const buildWorkerName = (worker, snapshot) => {
   return 'Unknown Worker';
 };
 
+const formatLocationSnapshot = (input, fallbackLabel = null) => {
+  if (!input) {
+    return fallbackLabel || null;
+  }
+
+  if (typeof input === 'string') {
+    const trimmed = input.trim();
+    return trimmed || fallbackLabel || null;
+  }
+
+  if (input.formattedAddress) {
+    return input.formattedAddress;
+  }
+
+  const parts = [];
+  if (input.line1) {
+    parts.push(input.line1);
+  }
+  if (input.address && input.address !== input.line1) {
+    parts.push(input.address);
+  }
+  const cityState = [input.city, input.state].filter(Boolean).join(', ');
+  if (cityState) {
+    parts.push(cityState);
+  } else if (input.city) {
+    parts.push(input.city);
+  }
+  if (input.postalCode) {
+    parts.push(input.postalCode);
+  }
+  if (parts.length > 0) {
+    return parts.join(', ');
+  }
+  if (input.name) {
+    return input.name;
+  }
+  if (typeof input.latitude === 'number' && typeof input.longitude === 'number') {
+    return `${input.latitude}, ${input.longitude}`;
+  }
+  if (input.description) {
+    return input.description;
+  }
+  return fallbackLabel || null;
+};
+
 const pickJobLocationSnapshot = (job) => {
   if (!job) return null;
-  
-  // First try job's location
+
   const jobLocation = job.location;
-  if (jobLocation) {
-    return {
-      line1: jobLocation.line1,
-      address: jobLocation.address,
-      city: jobLocation.city,
-      state: jobLocation.state,
-      postalCode: jobLocation.postalCode,
-      country: jobLocation.country,
-      latitude: jobLocation.latitude,
-      longitude: jobLocation.longitude,
-      name: jobLocation.name || `${job.title} Location`,
-      description: jobLocation.description,
-      isActive: true
-    };
+  const fromJob = formatLocationSnapshot(jobLocation, job.title ? `${job.title} Location` : null);
+  if (fromJob) {
+    return fromJob;
   }
-  
-  // If no job location, try business location
-  if (job.business && job.business.location) {
-    const bizLocation = job.business.location;
-    return {
-      line1: bizLocation.line1,
-      address: bizLocation.address,
-      city: bizLocation.city,
-      state: bizLocation.state,
-      postalCode: bizLocation.postalCode,
-      country: bizLocation.country,
-      latitude: bizLocation.latitude,
-      longitude: bizLocation.longitude,
-      name: bizLocation.name || `${job.business.name} Location`,
-      description: bizLocation.description,
-      isActive: true
-    };
+
+  const business = job.business;
+  if (business && typeof business === 'object' && business.location) {
+    const fromBusiness = formatLocationSnapshot(
+      business.location,
+      business.name ? `${business.name} Location` : null
+    );
+    if (fromBusiness) {
+      return fromBusiness;
+    }
+    if (business.name) {
+      return business.name;
+    }
   }
-  
+
   return null;
 };
 
 const buildLocationLabel = (record) => {
-  if (record.locationSnapshot) {
-    return record.locationSnapshot;
+  const snapshot = formatLocationSnapshot(record.locationSnapshot);
+  if (snapshot) {
+    return snapshot;
   }
   const fromJob = pickJobLocationSnapshot(record.job);
   if (fromJob) {
     return fromJob;
   }
+  if (record.business && typeof record.business === 'object' && record.business.name) {
+    return record.business.name;
+  }
   return 'Location TBD';
+};
+
+const toPlainObject = (value) => {
+  if (!value) {
+    return null;
+  }
+  if (typeof value.toObject === 'function') {
+    return value.toObject();
+  }
+  return value;
+};
+
+const normalizeSimpleLocationInput = (input, fallback = {}) => {
+  const source = toPlainObject(input);
+  if (!source || typeof source !== 'object') {
+    return null;
+  }
+
+  const latitude = Number(source.latitude);
+  const longitude = Number(source.longitude);
+  if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
+    return null;
+  }
+
+  const allowedRadiusSource =
+    source.allowedRadius ??
+    source.radius ??
+    fallback.allowedRadius;
+  const allowedRadius = Number(allowedRadiusSource);
+
+  const formattedAddress =
+    source.formattedAddress ||
+    fallback.formattedAddress ||
+    formatLocationSnapshot(source, fallback.fallbackLabel || null);
+
+  if (!formattedAddress) {
+    return null;
+  }
+
+  const normalized = {
+    latitude,
+    longitude,
+    formattedAddress
+  };
+
+  if (Number.isFinite(allowedRadius)) {
+    normalized.allowedRadius = allowedRadius;
+  }
+
+  return normalized;
+};
+
+const ensureRecordJobLocation = (record) => {
+  if (record.jobLocation) {
+    return record.jobLocation;
+  }
+
+  const job = record.job || {};
+  const derived =
+    normalizeSimpleLocationInput(job.location, {
+      formattedAddress: job.businessAddress,
+      fallbackLabel: pickJobLocationSnapshot(job),
+      allowedRadius: job.location?.allowedRadius
+    }) ||
+    normalizeSimpleLocationInput(job.business?.location, {
+      fallbackLabel: job.business?.name
+    });
+
+  if (derived) {
+    record.jobLocation = derived;
+  }
+
+  return record.jobLocation;
 };
 
 const resolveHourlyRate = (record) => {
@@ -200,44 +306,163 @@ exports.listAttendance = catchAsync(async (req, res, next) => {
   if (req.query.businessId) {
     filter.business = req.query.businessId;
   }
+  if (req.query.jobId) {
+    filter.job = req.query.jobId;
+  }
+
   if (req.query.date) {
     const range = buildDayRange(req.query.date);
     if (!range) {
       return next(new AppError('Invalid date parameter', 400));
     }
     filter.scheduledStart = { $gte: range.start, $lte: range.end };
+  } else {
+    const startDate = req.query.startDate;
+    const endDate = req.query.endDate;
+
+    const buildBoundary = (value, boundary) => {
+      const range = buildDayRange(value);
+      if (!range) {
+        return null;
+      }
+      return boundary === 'end' ? range.end : range.start;
+    };
+
+    const startBoundary = startDate ? buildBoundary(startDate, 'start') : null;
+    const endBoundary = endDate ? buildBoundary(endDate, 'end') : null;
+
+    if (startDate && !startBoundary) {
+      return next(new AppError('Invalid startDate parameter', 400));
+    }
+    if (endDate && !endBoundary) {
+      return next(new AppError('Invalid endDate parameter', 400));
+    }
+
+    if (startBoundary || endBoundary) {
+      filter.scheduledStart = {};
+      if (startBoundary) {
+        filter.scheduledStart.$gte = startBoundary;
+      }
+      if (endBoundary) {
+        filter.scheduledStart.$lte = endBoundary;
+      }
+    }
   }
-  if (req.query.status && req.query.status !== 'all') {
-    filter.status = req.query.status;
+  if (req.query.status) {
+    const normalizedStatus = req.query.status.toString().trim().toLowerCase().replace(/_/g, '-');
+    if (normalizedStatus && normalizedStatus !== 'all') {
+      filter.status = normalizedStatus;
+    }
   }
   const records = await AttendanceRecord.find(filter).sort({ scheduledStart: -1 });
   res.status(200).json({ status: 'success', results: records.length, data: records });
+});
+
+exports.getAttendanceRecord = catchAsync(async (req, res, next) => {
+  const record = await AttendanceRecord.findById(req.params.recordId).populate([
+    { path: 'worker', select: 'firstName lastName email phone userType' },
+    {
+      path: 'job',
+      select: 'title hourlyRate location business businessAddress',
+      populate: { path: 'business', select: 'name location' }
+    },
+    { path: 'business', select: 'name location' }
+  ]);
+  if (!record) {
+    return next(new AppError('Attendance record not found', 404));
+  }
+  if (req.user.userType === 'worker' && record.worker?._id?.toString() !== req.user._id.toString()) {
+    return next(new AppError('You can only view your own attendance records', 403));
+  }
+  res.status(200).json({ status: 'success', data: record });
 });
 
 exports.scheduleAttendance = catchAsync(async (req, res, next) => {
   if (req.user.userType !== 'employer') {
     return next(new AppError('Only employers can schedule attendance', 403));
   }
-  const job = await Job.findById(req.body.job);
+  const { job: jobId, worker: workerId, scheduledStart: scheduledStartInput, scheduledEnd: scheduledEndInput } = req.body;
+
+  if (!jobId || !workerId) {
+    return next(new AppError('job and worker fields are required', 400));
+  }
+
+  if (!scheduledStartInput || !scheduledEndInput) {
+    return next(new AppError('scheduledStart and scheduledEnd are required', 400));
+  }
+
+  const scheduledStart = new Date(scheduledStartInput);
+  const scheduledEnd = new Date(scheduledEndInput);
+  if (Number.isNaN(scheduledStart.valueOf()) || Number.isNaN(scheduledEnd.valueOf())) {
+    return next(new AppError('Invalid scheduledStart or scheduledEnd', 400));
+  }
+  if (scheduledEnd <= scheduledStart) {
+    return next(new AppError('scheduledEnd must be after scheduledStart', 400));
+  }
+
+  const job = await Job.findById(jobId)
+    .populate({ path: 'business', select: 'name location' });
   if (!job) {
     return next(new AppError('Job not found', 404));
   }
-  const worker = await User.findById(req.body.worker);
+  if (job.employer?.toString() !== req.user._id.toString()) {
+    return next(new AppError('You can only schedule attendance for your own jobs', 403));
+  }
+  if (!job.business) {
+    return next(new AppError('Job must be associated with a business', 400));
+  }
+
+  const worker = await User.findById(workerId);
   if (!worker) {
     return next(new AppError('Worker not found', 404));
   }
-  const hourlyRate = typeof req.body.hourlyRate === 'number' ? req.body.hourlyRate : job.hourlyRate;
+  if (worker.userType !== 'worker') {
+    return next(new AppError('Selected user is not a worker', 400));
+  }
+
+  const hourlyRate =
+    req.body.hourlyRate !== undefined
+      ? Number(req.body.hourlyRate)
+      : job.hourlyRate;
+  if (!Number.isFinite(hourlyRate) || hourlyRate < 0) {
+    return next(new AppError('hourlyRate must be a non-negative number', 400));
+  }
+
   const workerNameSnapshot = req.body.workerNameSnapshot || buildWorkerName(worker, null);
-  const jobTitleSnapshot = req.body.jobTitleSnapshot || job.title;
-  const locationSnapshot = req.body.locationSnapshot || pickJobLocationSnapshot(job);
+  const jobTitleSnapshot = req.body.jobTitleSnapshot || job.title || 'Untitled Role';
+  const locationSnapshot =
+    formatLocationSnapshot(req.body.locationSnapshot) ||
+    pickJobLocationSnapshot(job) ||
+    job.businessAddress ||
+    jobTitleSnapshot;
+
+  const derivedJobLocation =
+    normalizeSimpleLocationInput(req.body.jobLocation, {
+      formattedAddress: locationSnapshot,
+      allowedRadius: job.location?.allowedRadius,
+      fallbackLabel: locationSnapshot
+    }) ||
+    normalizeSimpleLocationInput(job.location, {
+      formattedAddress: job.businessAddress,
+      fallbackLabel: locationSnapshot
+    }) ||
+    normalizeSimpleLocationInput(job.business?.location, {
+      fallbackLabel: job.business?.name
+    });
+
   const record = await AttendanceRecord.create({
-    ...req.body,
+    worker: workerId,
+    job: job._id,
     employer: req.user._id,
-    business: job.business,
+    business: job.business._id || job.business,
+    scheduledStart,
+    scheduledEnd,
     hourlyRate,
     workerNameSnapshot,
     jobTitleSnapshot,
-    locationSnapshot
+    locationSnapshot,
+    notes: req.body.notes,
+    ...(derivedJobLocation ? { jobLocation: derivedJobLocation } : {})
   });
   res.status(201).json({ status: 'success', data: record });
 });
@@ -254,8 +479,13 @@ exports.clockIn = catchAsync(async (req, res, next) => {
     return next(new AppError('Already clocked in', 400));
   }
   await record.populate([
-    { path: 'job', select: 'hourlyRate location title' },
-    { path: 'worker', select: 'firstName lastName email' }
+    {
+      path: 'job',
+      select: 'hourlyRate location title business businessAddress',
+      populate: { path: 'business', select: 'name location' }
+    },
+    { path: 'worker', select: 'firstName lastName email' },
+    { path: 'business', select: 'name location' }
   ]);
   const now = new Date();
   record.clockInAt = now;
@@ -272,12 +502,35 @@ exports.clockIn = catchAsync(async (req, res, next) => {
   if (!record.jobTitleSnapshot && record.job) {
     record.jobTitleSnapshot = record.job.title;
   }
-  if (!record.locationSnapshot) {
-    const locationFromJob = pickJobLocationSnapshot(record.job);
-    if (locationFromJob) {
-      record.locationSnapshot = locationFromJob;
+  const fallbackLocationLabel =
+    record.locationSnapshot ||
+    pickJobLocationSnapshot(record.job) ||
+    record.job?.businessAddress ||
+    'Location TBD';
+  if (!record.locationSnapshot && fallbackLocationLabel) {
+    record.locationSnapshot = fallbackLocationLabel;
+  }
+
+  const jobLocation = ensureRecordJobLocation(record);
+
+  if (req.body.clockInLocation) {
+    const normalized = normalizeSimpleLocationInput(req.body.clockInLocation, {
+      formattedAddress: fallbackLocationLabel || jobLocation?.formattedAddress,
+      fallbackLabel: fallbackLocationLabel || jobLocation?.formattedAddress,
+      allowedRadius: jobLocation?.allowedRadius
+    });
+    if (!normalized) {
+      return next(new AppError('clockInLocation must include latitude and longitude', 400));
+    }
+    record.clockInLocation = normalized;
+    if (jobLocation) {
+      const validation = record.isLocationValid(normalized.latitude, normalized.longitude);
+      record.clockInDistance = validation.distance;
+      record.locationValidated = validation.isValid;
+      record.locationValidationMessage = validation.message;
     }
   }
+
   await record.save();
   res.status(200).json({ status: 'success', data: record });
 });
@@ -297,8 +550,13 @@ exports.clockOut = catchAsync(async (req, res, next) => {
     return next(new AppError('Already clocked out', 400));
   }
   await record.populate([
-    { path: 'job', select: 'hourlyRate location title' },
-    { path: 'worker', select: 'firstName lastName email' }
+    {
+      path: 'job',
+      select: 'hourlyRate location title business businessAddress',
+      populate: { path: 'business', select: 'name location' }
+    },
+    { path: 'worker', select: 'firstName lastName email' },
+    { path: 'business', select: 'name location' }
   ]);
   record.clockOutAt = new Date();
   record.status = 'completed';
@@ -315,12 +573,35 @@ exports.clockOut = catchAsync(async (req, res, next) => {
   if (!record.jobTitleSnapshot && record.job) {
     record.jobTitleSnapshot = record.job.title;
   }
-  if (!record.locationSnapshot) {
-    const locationFromJob = pickJobLocationSnapshot(record.job);
-    if (locationFromJob) {
-      record.locationSnapshot = locationFromJob;
+  const fallbackLocationLabel =
+    record.locationSnapshot ||
+    pickJobLocationSnapshot(record.job) ||
+    record.job?.businessAddress ||
+    'Location TBD';
+  if (!record.locationSnapshot && fallbackLocationLabel) {
+    record.locationSnapshot = fallbackLocationLabel;
+  }
+
+  const jobLocation = ensureRecordJobLocation(record);
+
+  if (req.body.clockOutLocation) {
+    const normalized = normalizeSimpleLocationInput(req.body.clockOutLocation, {
+      formattedAddress: fallbackLocationLabel || jobLocation?.formattedAddress,
+      fallbackLabel: fallbackLocationLabel || jobLocation?.formattedAddress,
+      allowedRadius: jobLocation?.allowedRadius
+    });
+    if (!normalized) {
+      return next(new AppError('clockOutLocation must include latitude and longitude', 400));
+    }
+    record.clockOutLocation = normalized;
+    if (jobLocation) {
+      const validation = record.isLocationValid(normalized.latitude, normalized.longitude);
+      record.clockOutDistance = validation.distance;
+      record.locationValidated = validation.isValid;
+      record.locationValidationMessage = validation.message;
     }
   }
+
   await record.save();
   res.status(200).json({ status: 'success', data: record });
 });
@@ -385,7 +666,11 @@ exports.markComplete = catchAsync(async (req, res, next) => {
     return next(new AppError('Only clocked-in shifts can be marked complete', 400));
   }
   await record.populate([
-    { path: 'job', select: 'title hourlyRate location' },
+    {
+      path: 'job',
+      select: 'title hourlyRate location business businessAddress',
+      populate: { path: 'business', select: 'name location' }
+    },
     { path: 'worker', select: 'firstName lastName email' }
   ]);
   const scheduledEnd = record.scheduledEnd ? new Date(record.scheduledEnd) : null;
@@ -433,7 +718,11 @@ exports.updateHours = catchAsync(async (req, res, next) => {
     return next(new AppError('Only the owning employer can update this record', 403));
   }
   await record.populate([
-    { path: 'job', select: 'title hourlyRate location' },
+    {
+      path: 'job',
+      select: 'title hourlyRate location business businessAddress',
+      populate: { path: 'business', select: 'name location' }
+    },
     { path: 'worker', select: 'firstName lastName email' }
   ]);
   const resolvedRate =

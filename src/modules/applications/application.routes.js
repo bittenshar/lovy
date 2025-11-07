@@ -9,7 +9,7 @@ const router = express.Router({ mergeParams: true });
 router.use(protect);
 
 // Application management routes with permission protection
-router.get('/', requirePermissions('view_applications'), controller.listApplications);
+router.get('/', requirePermissions('view_applications', { requireBusinessId: false }), controller.listApplications);
 
 // Employer-specific applications route
 router.get('/employer', (req, res, next) => {
@@ -26,7 +26,7 @@ router.get('/me', (req, res, next) => {
   }
   return controller.listMyApplications(req, res, next);
 }); 
-router.get('/worker/:workerId', requirePermissions('view_applications'), controller.getWorkerApplications);
+router.get('/worker/:workerId', requirePermissions('view_applications', { requireBusinessId: false }), controller.getWorkerApplications);
 
 // Application status management
 router.patch('/:applicationId', requirePermissions('manage_applications'), controller.updateApplication);

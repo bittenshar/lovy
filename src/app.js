@@ -78,7 +78,7 @@ app.get('/health', (req, res) => {
   });
 });
 
-app.use('/api', routes);
+app.use(['/api', '/apiapplication'], routes);
 
 app.all('*', (req, res, next) => {
   next(new AppError(`Route ${req.originalUrl} not found`, 404));

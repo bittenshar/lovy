@@ -1,5 +1,4 @@
 const express = require('express');
-const cors = require('cors');
 const morgan = require('morgan');
 const cookieParser = require('cookie-parser');
 const AppError = require('./shared/utils/appError');
@@ -11,45 +10,11 @@ const app = express();
 
 app.disable('x-powered-by');
 
-const corsOptions = {
-  origin: true, // Allow any origin with credentials
-  credentials: true,
-  methods: ['GET', 'POST', 'PATCH', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: [
-    'Content-Type',
-    'Authorization',
-    'Accept',
-    'Origin',
-    'X-Requested-With',
-    'X-Business-Id',
-    'x-user-id', // Standardized to lowercase
-    'Access-Control-Allow-Headers',
-    'Access-Control-Request-Method',
-    'Access-Control-Request-Headers',
-    'Access-Control-Allow-Origin',
-    'Access-Control-Allow-Credentials',
-    'Content-Length'
-  ],
-  exposedHeaders: [
-    'Set-Cookie',
-    'Authorization',
-    'X-Auth-Token',
-    'x-user-id'  // Standardized to lowercase
-  ],
-  maxAge: 86400, // 24 hours
-  preflightContinue: false,
-  optionsSuccessStatus: 204
-};
+
 
 if (process.env.NODE_ENV !== 'test') {
   app.use(morgan('dev'));
 }
-
-// Enable CORS with the configuration
-app.use(cors(corsOptions));
-
-// Handle OPTIONS preflight requests
-app.options('*', cors(corsOptions));
 
 app.use(express.json({ limit: '10mb' }));
 app.use(cookieParser());

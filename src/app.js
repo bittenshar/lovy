@@ -11,21 +11,28 @@ const app = express();
 
 app.disable('x-powered-by');
 
-// CORS Configuration
-app.use(cors({
-  origin: ['http://localhost:63350', 'http://localhost:3000', 'http://localhost:5173', 'capacitor://localhost', 'http://localhost'],
-  credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
-  allowedHeaders: [
-    'Origin',
-    'X-Requested-With',
-    'Content-Type',
-    'Accept',
-    'Authorization',
-    'x-user-id',
-    'x-business-id'
-  ]
-}));
+// CORS Configuration for development
+app.use((req, res, next) => {
+  const origin = req.headers.origin;
+  // Allow localhost with any port
+  if (origin && (origin.startsWith('http://localhost:') || origin.startsWith('https://localhost:'))) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+  }
+  
+  res.setHeader('Access-Control-Allow-Credentials', 'true');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'x-user-id, x-business-id, Authorization, Content-Type, Accept, Origin, X-Requested-With');
+  
+  // Handle preflight
+  if (req.method === 'OPTIONS') {
+    // Set max age to cache preflight results
+    res.setHeader('Access-Control-Max-Age', '86400');
+    res.status(204).end();
+    return;
+  }
+  
+  next();
+});
 
 if (process.env.NODE_ENV !== 'test') {
   app.use(morgan('dev'));

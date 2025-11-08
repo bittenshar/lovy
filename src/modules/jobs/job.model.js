@@ -15,7 +15,6 @@ const scheduleSchema = new mongoose.Schema(
     endTime: String,
     recurrence: String,         // 'one-time' | 'weekly' | 'monthly' | 'custom'
     workDays: { type: [String], default: [] },
-    customDates: { type: [Date], default: [] },
   },
   { _id: false }
 );

@@ -2,14 +2,6 @@
 
 This endpoint powers the worker-facing "attendance table" by returning past and upcoming attendance entries grouped by date with helpful summary totals.
 
-## Automatic Job Schedule Expansion
-
-- When an employer hires a worker for a job that has a schedule, the backend now auto-generates attendance records (shifts) by expanding the job's recurrence pattern.
-- Supported recurrence types: `one-time`, `weekly`, `monthly`, and `custom` (specific dates picked on the calendar). Custom selections are stored in `schedule.customDates`.
-- Weekday/weekend quick-picks are respected through `schedule.workDays`. If no days are provided we fall back to the job's original start day.
-- The generator plans future shifts up to the job's `schedule.endDate`. If an end date is missing, we roll forward (5 weeks for weekly/custom jobs, 6 months for monthly jobs) and clip to a maximum of 365 occurrences.
-- Already existing attendance rows are left untouched, so re-running the scheduler after updating a job only fills the gaps.
-
 ## Endpoints
 
 - `GET /workers/me/attendance/schedule`

@@ -4,7 +4,6 @@ const Job = require('./job.model');
 const Application = require('../applications/application.model');
 const Business = require('../businesses/business.model');
 const User = require('../users/user.model');
-const { autoScheduleJobShifts } = require('../attendance/attendanceAutoScheduler');
 
 const AppError = require('../../shared/utils/appError');
 const catchAsync = require('../../shared/utils/catchAsync');
@@ -240,10 +239,6 @@ exports.listJobsForEmployer = catchAsync(async (req, res, next) => {
       .populate('employer', 'firstName lastName email')
       .sort({ createdAt: -1 })
       .lean();
-
-    if (res.headersSent) {
-      return;
-    }
 
     // Calculate ETag based on jobs data
     const etag = require('crypto')
@@ -566,12 +561,6 @@ exports.hireApplicant = catchAsync(async (req, res, next) => {
   }
 
   await Promise.all([application.save(), job.save()]);
-
-  await autoScheduleJobShifts({
-    job,
-    worker: application.worker,
-    employerId: req.user._id
-  });
 
   const responseApplication = await Application.findById(application._id)
     .populate({

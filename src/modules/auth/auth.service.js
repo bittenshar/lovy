@@ -106,11 +106,6 @@ exports.login = async ({ email, password }) => {
 };
 
 exports.issueAuthResponse = async (res, data, statusCode = 200) => {
-  if (res.headersSent) {
-    console.warn('issueAuthResponse called after headers sent - skipping duplicate response');
-    return;
-  }
-
   const token = signToken(data.user._id);
   
   // Set Access-Control-Allow-Credentials header

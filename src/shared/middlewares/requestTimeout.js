@@ -1,27 +1,23 @@
-const AppError = require('../utils/appError');
-
 const requestTimeout = (timeoutMs = 25000) => {
   return (req, res, next) => {
-    if (!timeoutMs || Number(timeoutMs) <= 0) {
-      return next();
-    }
-
-    let timedOut = false;
+    // Set request timeout
     const timeout = setTimeout(() => {
-      timedOut = true;
-      req.timedout = true;
-      console.error(`Request timeout after ${timeoutMs}ms for ${req.method} ${req.originalUrl}`);
-      next(new AppError('Request timeout', 408));
+      if (!res.headersSent) {
+        console.error(`Request timeout after ${timeoutMs}ms for ${req.method} ${req.path}`);
+        res.status(408).json({
+          status: 'error',
+          message: 'Request timeout',
+          code: 'REQUEST_TIMEOUT'
+        });
+      }
     }, timeoutMs);
 
-    const clearTimer = () => {
-      if (!timedOut) {
-        clearTimeout(timeout);
-      }
+    // Clear timeout if response is sent
+    const originalEnd = res.end;
+    res.end = function(...args) {
+      clearTimeout(timeout);
+      originalEnd.apply(this, args);
     };
-
-    res.on('finish', clearTimer);
-    res.on('close', clearTimer);
 
     next();
   };

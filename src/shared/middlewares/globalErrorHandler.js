@@ -1,10 +1,6 @@
 const AppError = require('../utils/appError');
 
 module.exports = (err, req, res, next) => {
-  if (res.headersSent) {
-    return next(err);
-  }
-
   const statusCode = err.statusCode || 500;
   const status = err.status || 'error';
 

@@ -65,11 +65,28 @@ app.use((req, res, next) => {
 app.use(express.json({ limit: '10mb' }));
 app.use(cookieParser());
 
-// Avoid double timeouts when running inside Vercel/serverless (those platforms already enforce their own limits)
-const isServerless = Boolean(process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME || process.env.LAMBDA_TASK_ROOT);
+<<<<<<< ours
+<<<<<<< ours
+<<<<<<< ours
+<<<<<<< ours
+// Add request timeout middleware for serverless environments
+if (process.env.NODE_ENV === 'production') {
+  app.use(requestTimeout(25000)); // 25 second timeout for Vercel
+=======
+=======
+>>>>>>> theirs
+=======
+>>>>>>> theirs
+// Add request timeout middleware for serverless environments (configurable)
 const REQUEST_TIMEOUT_MS = Number(process.env.REQUEST_TIMEOUT_MS || 0);
-if (!isServerless && REQUEST_TIMEOUT_MS > 0) {
+if (process.env.NODE_ENV === 'production' && REQUEST_TIMEOUT_MS > 0) {
   app.use(requestTimeout(REQUEST_TIMEOUT_MS));
+>>>>>>> theirs
+=======
+// Add request timeout middleware for serverless environments
+if (process.env.NODE_ENV === 'production') {
+  app.use(requestTimeout(25000)); // 25 second timeout for Vercel
+>>>>>>> theirs
 }
 
 app.get('/health', (req, res) => {

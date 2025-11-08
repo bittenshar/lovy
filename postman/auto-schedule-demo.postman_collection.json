@@ -1,0 +1,119 @@
+{
+  "info": {
+    "name": "Auto Schedule Demo",
+    "description": "Happy-path flow to verify automatic shift generation when hiring a worker for a recurring job.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "version": {
+      "major": 1,
+      "minor": 0,
+      "patch": 0
+    }
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:3000/api" },
+    { "key": "employerToken", "value": "" },
+    { "key": "workerToken", "value": "" },
+    { "key": "businessId", "value": "" },
+    { "key": "jobId", "value": "" },
+    { "key": "applicationId", "value": "" },
+    { "key": "workerId", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "1. Create Monthly Weekday Job",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "Authorization", "value": "Bearer {{employerToken}}" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"businessId\": \"{{businessId}}\",\n  \"title\": \"Front Desk (Weekdays 1-6 PM)\",\n  \"description\": \"Recurring weekday coverage that should auto-create shifts once someone is hired.\",\n  \"hourlyRate\": 22,\n  \"location\": {\n    \"line1\": \"123 Demo St\",\n    \"city\": \"Austin\",\n    \"state\": \"TX\",\n    \"postalCode\": \"73301\",\n    \"country\": \"USA\",\n    \"latitude\": 30.2672,\n    \"longitude\": -97.7431\n  },\n  \"schedule\": {\n    \"startDate\": \"2024-11-01T13:00:00.000Z\",\n    \"endDate\": \"2025-02-01T13:00:00.000Z\",\n    \"startTime\": \"13:00\",\n    \"endTime\": \"18:00\",\n    \"recurrence\": \"monthly\",\n    \"workDays\": [\"weekday\"],\n    \"customDates\": [\n      \"2024-11-12T13:00:00.000Z\",\n      \"2024-12-10T13:00:00.000Z\"\n    ]\n  },\n  \"tags\": [\"front-desk\", \"weekday\"],\n  \"urgency\": \"medium\"\n}"
+        },
+        "url": { "raw": "{{baseUrl}}/jobs", "host": ["{{baseUrl}}"], "path": ["jobs"] }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "const body = pm.response.json();",
+              "pm.environment.set('jobId', body.data._id);"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ]
+    },
+    {
+      "name": "2. Worker Applies to Job",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "Authorization", "value": "Bearer {{workerToken}}" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"jobId\": \"{{jobId}}\",\n  \"message\": \"Available for every weekday.\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/jobs/{{jobId}}/applications",
+          "host": ["{{baseUrl}}"],
+          "path": ["jobs", "{{jobId}}", "applications"]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "const body = pm.response.json();",
+              "pm.environment.set('applicationId', body.data._id);",
+              "pm.environment.set('workerId', body.data.worker);"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ]
+    },
+    {
+      "name": "3. Employer Hires & Auto-Schedules",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "Authorization", "value": "Bearer {{employerToken}}" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"businessId\": \"{{businessId}}\",\n  \"startDate\": \"2024-11-12T13:00:00.000Z\",\n  \"hiringNotes\": \"Auto-scheduler should mint all matching shifts.\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/jobs/applications/{{applicationId}}/hire",
+          "host": ["{{baseUrl}}"],
+          "path": ["jobs", "applications", "{{applicationId}}", "hire"]
+        }
+      }
+    },
+    {
+      "name": "4. Verify Attendance Records",
+      "request": {
+        "method": "GET",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{employerToken}}" }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/attendance?workerId={{workerId}}",
+          "host": ["{{baseUrl}}"],
+          "path": ["attendance"],
+          "query": [
+            { "key": "workerId", "value": "{{workerId}}" },
+            { "key": "jobId", "value": "{{jobId}}" }
+          ]
+        }
+      }
+    }
+  ]
+}

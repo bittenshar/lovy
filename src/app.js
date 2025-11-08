@@ -65,9 +65,10 @@ app.use((req, res, next) => {
 app.use(express.json({ limit: '10mb' }));
 app.use(cookieParser());
 
-// Add request timeout middleware for serverless environments
-if (process.env.NODE_ENV === 'production') {
-  app.use(requestTimeout(25000)); // 25 second timeout for Vercel
+// Add request timeout middleware for serverless environments (configurable)
+const REQUEST_TIMEOUT_MS = Number(process.env.REQUEST_TIMEOUT_MS || 0);
+if (process.env.NODE_ENV === 'production' && REQUEST_TIMEOUT_MS > 0) {
+  app.use(requestTimeout(REQUEST_TIMEOUT_MS));
 }
 
 app.get('/health', (req, res) => {
@@ -78,7 +79,8 @@ app.get('/health', (req, res) => {
   });
 });
 
-app.use(['/api', '/apiapplication'], routes);
+app.use('/api', routes);
+
 
 app.all('*', (req, res, next) => {
   next(new AppError(`Route ${req.originalUrl} not found`, 404));

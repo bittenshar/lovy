@@ -30,7 +30,8 @@ const corsOptions = {
   exposedHeaders: [
     'Set-Cookie',
     'Authorization',
-    'X-Auth-Token'
+    'X-Auth-Token',
+    'x-user-id', 
   ],
   maxAge: 86400, // 24 hours
   preflightContinue: false,

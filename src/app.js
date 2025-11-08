@@ -1,4 +1,5 @@
 const express = require('express');
+const cors = require('cors');
 const morgan = require('morgan');
 const cookieParser = require('cookie-parser');
 const AppError = require('./shared/utils/appError');
@@ -10,7 +11,21 @@ const app = express();
 
 app.disable('x-powered-by');
 
-
+// CORS Configuration
+app.use(cors({
+  origin: ['http://localhost:63350', 'http://localhost:3000', 'http://localhost:5173', 'capacitor://localhost', 'http://localhost'],
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
+  allowedHeaders: [
+    'Origin',
+    'X-Requested-With',
+    'Content-Type',
+    'Accept',
+    'Authorization',
+    'x-user-id',
+    'x-business-id'
+  ]
+}));
 
 if (process.env.NODE_ENV !== 'test') {
   app.use(morgan('dev'));

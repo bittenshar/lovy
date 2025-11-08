@@ -22,20 +22,19 @@ const corsOptions = {
     'Origin',
     'X-Requested-With',
     'X-Business-Id',
-    'X-User-Id',
-    'x-user-id',
+    'x-user-id', // Standardized to lowercase
     'Access-Control-Allow-Headers',
     'Access-Control-Request-Method',
     'Access-Control-Request-Headers',
     'Access-Control-Allow-Origin',
+    'Access-Control-Allow-Credentials',
     'Content-Length'
   ],
   exposedHeaders: [
     'Set-Cookie',
     'Authorization',
     'X-Auth-Token',
-    'X-User-Id',
-    'x-user-id'
+    'x-user-id'  // Standardized to lowercase
   ],
   maxAge: 86400, // 24 hours
   preflightContinue: false,

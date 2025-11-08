@@ -12,7 +12,7 @@ const app = express();
 app.disable('x-powered-by');
 
 const corsOptions = {
-  origin: '*', // Allow all origins
+  origin: true, // Allow any origin with credentials
   credentials: true,
   methods: ['GET', 'POST', 'PATCH', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: [
@@ -27,13 +27,15 @@ const corsOptions = {
     'Access-Control-Allow-Headers',
     'Access-Control-Request-Method',
     'Access-Control-Request-Headers',
-    'Access-Control-Allow-Origin'
+    'Access-Control-Allow-Origin',
+    'Content-Length'
   ],
   exposedHeaders: [
     'Set-Cookie',
     'Authorization',
     'X-Auth-Token',
-    'x-user-id', 
+    'X-User-Id',
+    'x-user-id'
   ],
   maxAge: 86400, // 24 hours
   preflightContinue: false,
@@ -44,29 +46,11 @@ if (process.env.NODE_ENV !== 'test') {
   app.use(morgan('dev'));
 }
 
-// Enable CORS preflight for all routes
-app.options('*', cors(corsOptions));
-
-// Apply CORS middleware
+// Enable CORS with the configuration
 app.use(cors(corsOptions));
 
-// Add headers to allow CORS
-app.use((req, res, next) => {
-  res.header('Access-Control-Allow-Origin', '*');
-  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS');
-  res.header(
-    'Access-Control-Allow-Headers',
-    'Content-Type, Authorization, Content-Length, X-Requested-With, X-Business-Id, X-User-Id, x-user-id'
-  );
-  res.header('Access-Control-Allow-Credentials', 'true');
-  
-  // Handle preflight
-  if (req.method === 'OPTIONS') {
-    return res.status(200).end();
-  }
-  
-  next();
-});
+// Handle OPTIONS preflight requests
+app.options('*', cors(corsOptions));
 
 app.use(express.json({ limit: '10mb' }));
 app.use(cookieParser());

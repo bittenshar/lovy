@@ -283,7 +283,8 @@ const buildApplicantDetailItems = (application, worker, workerProfile) => {
 const buildApplicationPresenter = (applicationDoc, options = {}) => {
   const {
     workerProfile: rawWorkerProfile = null,
-    includeApplicantDetails = true
+    includeApplicantDetails = true,
+    includeCompanyLogos = false
   } = options;
 
   const application = toPlain(applicationDoc);
@@ -303,7 +304,9 @@ const buildApplicationPresenter = (applicationDoc, options = {}) => {
   const detailItems = [...jobItems, ...applicantItems];
   const detailText = detailItems.map((item) => `${item.label}: ${item.value}`).join('\n');
 
-  const logos = resolveCompanyLogos(business);
+  const logos = includeCompanyLogos
+    ? resolveCompanyLogos(business)
+    : { base: null, small: null, large: null };
 
   const response = {
     id: toStringId(application?._id),

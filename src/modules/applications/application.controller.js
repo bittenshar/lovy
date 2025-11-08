@@ -315,6 +315,10 @@ exports.listApplications = catchAsync(async (req, res, next) => {
   const includePortfolioMedia = includeApplicantDetails
     ? parseBoolean(req.query.includePortfolioMedia, false)
     : false;
+  const includeCompanyLogos = parseBoolean(
+    req.query.includeCompanyLogos,
+    false
+  );
 
   if (req.user.userType === 'employer') {
     const accessibleBusinessIds = await getAccessibleBusinessIds(req.user);
@@ -422,7 +426,8 @@ exports.listApplications = catchAsync(async (req, res, next) => {
       includeApplicantDetails && workerId ? profileMap.get(workerId) || null : null;
     return buildApplicationPresenter(application, {
       workerProfile,
-      includeApplicantDetails
+      includeApplicantDetails,
+      includeCompanyLogos
     });
   });
 

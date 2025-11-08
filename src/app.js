@@ -21,9 +21,9 @@ app.use((req, res, next) => {
   
   res.setHeader('Access-Control-Allow-Credentials', 'true');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'x-user-id, x-business-id, Authorization, Content-Type, Accept, Origin, X-Requested-With');
+  res.setHeader('Access-Control-Allow-Headers', 'x-user-id, x-business-id, Authorization, Content-Type, Accept, Origin, X-Requested-With , x-user-id, x-business-id');
   
-  // Handle preflight
+  // Handle preflightu
   if (req.method === 'OPTIONS') {
     // Set max age to cache preflight results
     res.setHeader('Access-Control-Max-Age', '86400');

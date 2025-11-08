@@ -17,7 +17,7 @@
       "methods": ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
       "headers": {
         "Access-Control-Allow-Origin": "*",
-        "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Requested-With, X-Business-Id, X-User-Id",
+        "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Requested-With, X-Business-Id, X-User-Id , x-user-id, x-business-id",
         "Access-Control-Allow-Credentials": "true",
         "Access-Control-Allow-Methods": "GET, POST, PUT, PATCH, DELETE, OPTIONS"
       }

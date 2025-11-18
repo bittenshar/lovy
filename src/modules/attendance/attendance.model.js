@@ -57,6 +57,16 @@ attendanceSchema.index({ worker: 1, scheduledStart: -1 });
 attendanceSchema.index({ business: 1, scheduledStart: -1 });
 attendanceSchema.index({ 'jobLocation.latitude': 1, 'jobLocation.longitude': 1 });
 
+// Validation: scheduledEnd must be after scheduledStart
+attendanceSchema.pre('save', function(next) {
+  if (this.scheduledEnd && this.scheduledStart) {
+    if (this.scheduledEnd <= this.scheduledStart) {
+      return next(new Error('scheduledEnd must be after scheduledStart'));
+    }
+  }
+  next();
+});
+
 // Helper method to calculate distance between two coordinates using Haversine formula
 attendanceSchema.statics.calculateDistance = function(lat1, lon1, lat2, lon2) {
   const R = 6371000; // Earth's radius in meters

@@ -193,9 +193,15 @@ exports.getWorkerAttendance = catchAsync(async (req, res, next) => {
   const filter = { worker: workerId };
   if (req.query.date) {
     const targetDate = new Date(req.query.date);
-    const start = new Date(targetDate.setHours(0, 0, 0, 0));
-    const end = new Date(targetDate.setHours(23, 59, 59, 999));
-    filter.scheduledStart = { $gte: start, $lte: end };
+    // Work in UTC to avoid timezone dependencies
+    const start = new Date(targetDate);
+    start.setUTCHours(0, 0, 0, 0);
+    const end = new Date(targetDate);
+    end.setUTCHours(23, 59, 59, 999);
+    // Find records where the scheduled time range overlaps with the queried date
+    // A job overlaps with a date if: job_start <= day_end AND job_end > day_start
+    filter.scheduledStart = { $lte: end };
+    filter.scheduledEnd = { $gt: start };
   }
   const records = await AttendanceRecord.find(filter).sort({ scheduledStart: -1 });
   res.status(200).json({ status: 'success', results: records.length, data: records });
@@ -248,10 +254,11 @@ exports.getWorkerAttendanceSchedule = catchAsync(async (req, res, next) => {
     if (Number.isNaN(date.valueOf())) {
       return null;
     }
+    // Work in UTC to avoid timezone dependencies
     if (boundary === 'start') {
-      date.setHours(0, 0, 0, 0);
+      date.setUTCHours(0, 0, 0, 0);
     } else {
-      date.setHours(23, 59, 59, 999);
+      date.setUTCHours(23, 59, 59, 999);
     }
     return date;
   };
@@ -267,12 +274,29 @@ exports.getWorkerAttendanceSchedule = catchAsync(async (req, res, next) => {
   }
 
   if (fromBoundary || toBoundary) {
-    filter.scheduledStart = {};
-    if (fromBoundary) {
-      filter.scheduledStart.$gte = fromBoundary;
-    }
-    if (toBoundary) {
-      filter.scheduledStart.$lte = toBoundary;
+    // For range queries, we still filter by scheduledStart since we want records within the range
+    // But we'll also include records that might span into this range
+    const rangeFilter = {};
+    if (fromBoundary && toBoundary) {
+      // Find records that overlap with the date range
+      filter.$or = [
+        // Records that start within the range
+        { scheduledStart: { $gte: fromBoundary, $lte: toBoundary } },
+        // Records that start before range but end within or after range start
+        {
+          scheduledStart: { $lt: fromBoundary },
+          scheduledEnd: { $gt: fromBoundary }
+        }
+      ];
+    } else {
+      // Single boundary - use original logic for now to maintain compatibility
+      filter.scheduledStart = {};
+      if (fromBoundary) {
+        filter.scheduledStart.$gte = fromBoundary;
+      }
+      if (toBoundary) {
+        filter.scheduledStart.$lte = toBoundary;
+      }
     }
   }
 

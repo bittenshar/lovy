@@ -13,10 +13,11 @@ const buildDayRange = (dateInput) => {
   if (Number.isNaN(base.valueOf())) {
     return null;
   }
+  // Work in UTC to avoid timezone dependencies
   const start = new Date(base);
-  start.setHours(0, 0, 0, 0);
+  start.setUTCHours(0, 0, 0, 0);
   const end = new Date(base);
-  end.setHours(23, 59, 59, 999);
+  end.setUTCHours(23, 59, 59, 999);
   return { start, end };
 };
 
@@ -315,7 +316,10 @@ exports.listAttendance = catchAsync(async (req, res, next) => {
     if (!range) {
       return next(new AppError('Invalid date parameter', 400));
     }
-    filter.scheduledStart = { $gte: range.start, $lte: range.end };
+    // Find records where the scheduled time range overlaps with the queried date
+    // A job overlaps with a date if: job_start <= day_end AND job_end > day_start
+    filter.scheduledStart = { $lte: range.end };
+    filter.scheduledEnd = { $gt: range.start };
   } else {
     const startDate = req.query.startDate;
     const endDate = req.query.endDate;
@@ -339,12 +343,18 @@ exports.listAttendance = catchAsync(async (req, res, next) => {
     }
 
     if (startBoundary || endBoundary) {
-      filter.scheduledStart = {};
-      if (startBoundary) {
-        filter.scheduledStart.$gte = startBoundary;
-      }
-      if (endBoundary) {
-        filter.scheduledStart.$lte = endBoundary;
+      // Use range intersection logic for date ranges
+      // Find records that overlap with the specified date range
+      if (startBoundary && endBoundary) {
+        // Both start and end dates specified - find records that overlap with this range
+        filter.scheduledStart = { $lte: endBoundary };
+        filter.scheduledEnd = { $gt: startBoundary };
+      } else if (startBoundary) {
+        // Only start date - find records that end after this date
+        filter.scheduledEnd = { $gt: startBoundary };
+      } else if (endBoundary) {
+        // Only end date - find records that start before this date
+        filter.scheduledStart = { $lte: endBoundary };
       }
     }
   }
@@ -619,7 +629,10 @@ exports.getManagementView = catchAsync(async (req, res, next) => {
   }
   const filter = {
     employer: req.user._id,
-    scheduledStart: { $gte: range.start, $lte: range.end }
+    // Find records where the scheduled time range overlaps with the queried date
+    // A job overlaps with a date if: job_start <= day_end AND job_end > day_start
+    scheduledStart: { $lte: range.end },
+    scheduledEnd: { $gt: range.start }
   };
   if (req.query.status && req.query.status !== 'all') {
     filter.status = req.query.status;

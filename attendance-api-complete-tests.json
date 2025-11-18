@@ -1,0 +1,1073 @@
+{
+	"info": {
+		"_postman_id": "attendance-complete-api-2025",
+		"name": "Attendance API - Complete Tests (Create & Get)",
+		"description": "Comprehensive test collection for attendance CREATE and GET endpoints for both Employer and Worker",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"variable": [
+		{
+			"key": "baseUrl",
+			"value": "http://localhost:3000",
+			"type": "string"
+		},
+		{
+			"key": "employerToken",
+			"value": "your_employer_token_here",
+			"type": "string"
+		},
+		{
+			"key": "workerToken",
+			"value": "worker_auth_token_here",
+			"type": "string"
+		},
+		{
+			"key": "workerId",
+			"value": "worker_id_here",
+			"type": "string"
+		},
+		{
+			"key": "jobId",
+			"value": "job_id_here",
+			"type": "string"
+		},
+		{
+			"key": "businessId",
+			"value": "business_id_here",
+			"type": "string"
+		},
+		{
+			"key": "recordId",
+			"value": "",
+			"type": "string"
+		}
+	],
+	"item": [
+		{
+			"name": "CREATE Attendance (Employer Only)",
+			"item": [
+				{
+					"name": "1. Create Attendance - Basic",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status code is 201', function () {",
+									"    pm.response.to.have.status(201);",
+									"});",
+									"",
+									"pm.test('Response has success status', function () {",
+									"    const jsonData = pm.response.json();",
+									"    pm.expect(jsonData.status).to.eql('success');",
+									"});",
+									"",
+									"pm.test('Response contains attendance record', function () {",
+									"    const jsonData = pm.response.json();",
+									"    pm.expect(jsonData.data).to.be.an('object');",
+									"    pm.expect(jsonData.data._id).to.exist;",
+									"    pm.expect(jsonData.data.worker).to.exist;",
+									"    pm.expect(jsonData.data.job).to.exist;",
+									"});",
+									"",
+									"// Save record ID for other tests",
+									"if (pm.response.code === 201) {",
+									"    const jsonData = pm.response.json();",
+									"    pm.collectionVariables.set('recordId', jsonData.data._id);",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{employerToken}}",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"worker\": \"{{workerId}}\",\n    \"job\": \"{{jobId}}\",\n    \"scheduledStart\": \"2025-11-20T09:00:00.000Z\",\n    \"scheduledEnd\": \"2025-11-20T17:00:00.000Z\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/attendance",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "attendance"]
+						},
+						"description": "Basic attendance creation with only required fields"
+					},
+					"response": []
+				},
+				{
+					"name": "2. Create Attendance - With All Fields",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status code is 201', function () {",
+									"    pm.response.to.have.status(201);",
+									"});",
+									"",
+									"pm.test('Hourly rate is set correctly', function () {",
+									"    const jsonData = pm.response.json();",
+									"    pm.expect(jsonData.data.hourlyRate).to.eql(25);",
+									"});",
+									"",
+									"pm.test('Custom snapshots are saved', function () {",
+									"    const jsonData = pm.response.json();",
+									"    pm.expect(jsonData.data.workerNameSnapshot).to.exist;",
+									"    pm.expect(jsonData.data.jobTitleSnapshot).to.exist;",
+									"    pm.expect(jsonData.data.locationSnapshot).to.exist;",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{employerToken}}",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"worker\": \"{{workerId}}\",\n    \"job\": \"{{jobId}}\",\n    \"scheduledStart\": \"2025-11-21T08:00:00.000Z\",\n    \"scheduledEnd\": \"2025-11-21T16:00:00.000Z\",\n    \"hourlyRate\": 25,\n    \"workerNameSnapshot\": \"John Doe\",\n    \"jobTitleSnapshot\": \"Warehouse Associate\",\n    \"locationSnapshot\": \"123 Main St, City, State 12345\",\n    \"notes\": \"Morning shift - warehouse loading dock\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/attendance",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "attendance"]
+						},
+						"description": "Create attendance with all optional fields"
+					},
+					"response": []
+				},
+				{
+					"name": "3. Create Attendance - Overnight Shift",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{employerToken}}",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"worker\": \"{{workerId}}\",\n    \"job\": \"{{jobId}}\",\n    \"scheduledStart\": \"2025-11-20T22:00:00.000Z\",\n    \"scheduledEnd\": \"2025-11-21T06:00:00.000Z\",\n    \"hourlyRate\": 30,\n    \"notes\": \"Night shift - security patrol\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/attendance",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "attendance"]
+						},
+						"description": "Create attendance for overnight shift"
+					},
+					"response": []
+				},
+				{
+					"name": "4. Error - Missing Required Fields",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status code is 400', function () {",
+									"    pm.response.to.have.status(400);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{employerToken}}",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"worker\": \"{{workerId}}\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/attendance",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "attendance"]
+						},
+						"description": "Test error handling when required fields missing"
+					},
+					"response": []
+				},
+				{
+					"name": "5. Error - End Before Start",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status code is 400', function () {",
+									"    pm.response.to.have.status(400);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{employerToken}}",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"worker\": \"{{workerId}}\",\n    \"job\": \"{{jobId}}\",\n    \"scheduledStart\": \"2025-11-20T17:00:00.000Z\",\n    \"scheduledEnd\": \"2025-11-20T09:00:00.000Z\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/attendance",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "attendance"]
+						},
+						"description": "Error when scheduledEnd before scheduledStart"
+					},
+					"response": []
+				},
+				{
+					"name": "6. Error - Worker Cannot Create",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status code is 403', function () {",
+									"    pm.response.to.have.status(403);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{workerToken}}",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"worker\": \"{{workerId}}\",\n    \"job\": \"{{jobId}}\",\n    \"scheduledStart\": \"2025-11-20T09:00:00.000Z\",\n    \"scheduledEnd\": \"2025-11-20T17:00:00.000Z\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/attendance",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "attendance"]
+						},
+						"description": "Workers cannot create attendance (employer-only)"
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "GET Attendance - Employer",
+			"item": [
+				{
+					"name": "1. Get All Attendance Records",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status code is 200', function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('Response contains results array', function () {",
+									"    const jsonData = pm.response.json();",
+									"    pm.expect(jsonData.status).to.eql('success');",
+									"    pm.expect(jsonData.data).to.be.an('array');",
+									"    pm.expect(jsonData.results).to.exist;",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{employerToken}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/attendance",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "attendance"]
+						},
+						"description": "Employer gets all attendance records"
+					},
+					"response": []
+				},
+				{
+					"name": "2. Get Attendance by Date",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status code is 200', function () {",
+									"    pm.response.to.have.status(200);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{employerToken}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/attendance?date=2025-11-20",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "attendance"],
+							"query": [
+								{
+									"key": "date",
+									"value": "2025-11-20"
+								}
+							]
+						},
+						"description": "Get attendance for specific date"
+					},
+					"response": []
+				},
+				{
+					"name": "3. Get Attendance by Date Range",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{employerToken}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/attendance?startDate=2025-11-20&endDate=2025-11-25",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "attendance"],
+							"query": [
+								{
+									"key": "startDate",
+									"value": "2025-11-20"
+								},
+								{
+									"key": "endDate",
+									"value": "2025-11-25"
+								}
+							]
+						},
+						"description": "Get attendance within date range"
+					},
+					"response": []
+				},
+				{
+					"name": "4. Get Attendance by Worker",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{employerToken}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/attendance?workerId={{workerId}}",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "attendance"],
+							"query": [
+								{
+									"key": "workerId",
+									"value": "{{workerId}}"
+								}
+							]
+						},
+						"description": "Get attendance for specific worker"
+					},
+					"response": []
+				},
+				{
+					"name": "5. Get Attendance by Business",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{employerToken}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/attendance?businessId={{businessId}}",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "attendance"],
+							"query": [
+								{
+									"key": "businessId",
+									"value": "{{businessId}}"
+								}
+							]
+						},
+						"description": "Get attendance for specific business"
+					},
+					"response": []
+				},
+				{
+					"name": "6. Get Attendance by Job",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{employerToken}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/attendance?jobId={{jobId}}",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "attendance"],
+							"query": [
+								{
+									"key": "jobId",
+									"value": "{{jobId}}"
+								}
+							]
+						},
+						"description": "Get attendance for specific job"
+					},
+					"response": []
+				},
+				{
+					"name": "7. Get Attendance by Status",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{employerToken}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/attendance?status=scheduled",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "attendance"],
+							"query": [
+								{
+									"key": "status",
+									"value": "scheduled",
+									"description": "scheduled, clocked-in, completed"
+								}
+							]
+						},
+						"description": "Filter by status"
+					},
+					"response": []
+				},
+				{
+					"name": "8. Get Attendance - Multiple Filters",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{employerToken}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/attendance?workerId={{workerId}}&date=2025-11-20&status=scheduled",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "attendance"],
+							"query": [
+								{
+									"key": "workerId",
+									"value": "{{workerId}}"
+								},
+								{
+									"key": "date",
+									"value": "2025-11-20"
+								},
+								{
+									"key": "status",
+									"value": "scheduled"
+								}
+							]
+						},
+						"description": "Combine multiple filters"
+					},
+					"response": []
+				},
+				{
+					"name": "9. Get Single Attendance Record",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status code is 200', function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('Record details populated', function () {",
+									"    const jsonData = pm.response.json();",
+									"    pm.expect(jsonData.data.worker).to.be.an('object');",
+									"    pm.expect(jsonData.data.job).to.be.an('object');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{employerToken}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/attendance/{{recordId}}",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "attendance", "{{recordId}}"]
+						},
+						"description": "Get single record by ID with populated details"
+					},
+					"response": []
+				},
+				{
+					"name": "10. Get Management View",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status code is 200', function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('Has summary and records', function () {",
+									"    const jsonData = pm.response.json();",
+									"    pm.expect(jsonData.data.records).to.be.an('array');",
+									"    pm.expect(jsonData.data.summary).to.be.an('object');",
+									"    pm.expect(jsonData.data.summary.totalRecords).to.exist;",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{employerToken}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/attendance/management?date=2025-11-20",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "attendance", "management"],
+							"query": [
+								{
+									"key": "date",
+									"value": "2025-11-20",
+									"description": "Required parameter"
+								}
+							]
+						},
+						"description": "Management view with summary (employer only)"
+					},
+					"response": []
+				},
+				{
+					"name": "11. Management View - With Filters",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{employerToken}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/attendance/management?date=2025-11-20&status=scheduled&workerId={{workerId}}",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "attendance", "management"],
+							"query": [
+								{
+									"key": "date",
+									"value": "2025-11-20"
+								},
+								{
+									"key": "status",
+									"value": "scheduled"
+								},
+								{
+									"key": "workerId",
+									"value": "{{workerId}}"
+								}
+							]
+						},
+						"description": "Management view with filters"
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "GET Attendance - Worker",
+			"item": [
+				{
+					"name": "1. Get My Attendance Records",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status code is 200', function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('Response contains attendance', function () {",
+									"    const jsonData = pm.response.json();",
+									"    pm.expect(jsonData.data).to.be.an('array');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{workerToken}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/attendance?workerId={{workerId}}",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "attendance"],
+							"query": [
+								{
+									"key": "workerId",
+									"value": "{{workerId}}"
+								}
+							]
+						},
+						"description": "Worker retrieves their own attendance records"
+					},
+					"response": []
+				},
+				{
+					"name": "2. Get My Attendance by Date",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{workerToken}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/attendance?workerId={{workerId}}&date=2025-11-20",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "attendance"],
+							"query": [
+								{
+									"key": "workerId",
+									"value": "{{workerId}}"
+								},
+								{
+									"key": "date",
+									"value": "2025-11-20"
+								}
+							]
+						},
+						"description": "Worker gets their attendance for specific date"
+					},
+					"response": []
+				},
+				{
+					"name": "3. Get My Attendance Date Range",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{workerToken}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/attendance?workerId={{workerId}}&startDate=2025-11-18&endDate=2025-11-24",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "attendance"],
+							"query": [
+								{
+									"key": "workerId",
+									"value": "{{workerId}}"
+								},
+								{
+									"key": "startDate",
+									"value": "2025-11-18"
+								},
+								{
+									"key": "endDate",
+									"value": "2025-11-24"
+								}
+							]
+						},
+						"description": "Worker gets their attendance for a week/range"
+					},
+					"response": []
+				},
+				{
+					"name": "4. Get My Upcoming Shifts",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{workerToken}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/attendance?workerId={{workerId}}&status=scheduled&startDate=2025-11-18",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "attendance"],
+							"query": [
+								{
+									"key": "workerId",
+									"value": "{{workerId}}"
+								},
+								{
+									"key": "status",
+									"value": "scheduled"
+								},
+								{
+									"key": "startDate",
+									"value": "2025-11-18"
+								}
+							]
+						},
+						"description": "Worker gets upcoming scheduled shifts"
+					},
+					"response": []
+				},
+				{
+					"name": "5. Get My Completed Shifts",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{workerToken}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/attendance?workerId={{workerId}}&status=completed",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "attendance"],
+							"query": [
+								{
+									"key": "workerId",
+									"value": "{{workerId}}"
+								},
+								{
+									"key": "status",
+									"value": "completed"
+								}
+							]
+						},
+						"description": "Worker gets completed shifts for payment tracking"
+					},
+					"response": []
+				},
+				{
+					"name": "6. Get Single Attendance Record",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status code is 200', function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('Record populated with details', function () {",
+									"    const jsonData = pm.response.json();",
+									"    pm.expect(jsonData.data.worker).to.exist;",
+									"    pm.expect(jsonData.data.job).to.exist;",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{workerToken}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/attendance/{{recordId}}",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "attendance", "{{recordId}}"]
+						},
+						"description": "Worker gets specific attendance record details"
+					},
+					"response": []
+				},
+				{
+					"name": "7. Get My Attendance by Business",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{workerToken}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/attendance?workerId={{workerId}}&businessId={{businessId}}",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "attendance"],
+							"query": [
+								{
+									"key": "workerId",
+									"value": "{{workerId}}"
+								},
+								{
+									"key": "businessId",
+									"value": "{{businessId}}"
+								}
+							]
+						},
+						"description": "Worker gets their attendance for specific business"
+					},
+					"response": []
+				},
+				{
+					"name": "8. Get My Attendance by Job",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{workerToken}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/attendance?workerId={{workerId}}&jobId={{jobId}}",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "attendance"],
+							"query": [
+								{
+									"key": "workerId",
+									"value": "{{workerId}}"
+								},
+								{
+									"key": "jobId",
+									"value": "{{jobId}}"
+								}
+							]
+						},
+						"description": "Worker gets their attendance for specific job"
+					},
+					"response": []
+				},
+				{
+					"name": "9. Error - Worker Cannot Access Management",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status code is 403', function () {",
+									"    pm.response.to.have.status(403);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{workerToken}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/attendance/management?date=2025-11-20",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "attendance", "management"],
+							"query": [
+								{
+									"key": "date",
+									"value": "2025-11-20"
+								}
+							]
+						},
+						"description": "Verify workers cannot access management view"
+					},
+					"response": []
+				},
+				{
+					"name": "10. Error - Cannot View Other Worker's Record",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status code is 403', function () {",
+									"    pm.response.to.have.status(403);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{workerToken}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/attendance/OTHER_WORKER_RECORD_ID",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "attendance", "OTHER_WORKER_RECORD_ID"]
+						},
+						"description": "Workers can only view their own records"
+					},
+					"response": []
+				}
+			]
+		}
+	]
+}

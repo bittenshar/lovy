@@ -251,9 +251,11 @@ exports.updateBusiness = catchAsync(async (req, res) => {
 
   // Handle file upload if present
   if (req.file) {
-    // Store the file path in the database
+    // Store the full URL in the database so clients get absolute paths
+    const baseUrl = process.env.BASE_URL || `${req.protocol}://${req.get('host')}`;
     const filePath = `/images/business-logos/${req.file.filename}`;
-    business.logoUrl = filePath;
+    const fullUrl = `${baseUrl}${filePath}`;
+    business.logoUrl = fullUrl;
     business.logoLocalPath = filePath;
   }
 

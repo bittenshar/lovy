@@ -144,8 +144,10 @@ exports.updateWorkerProfile = catchAsync(async (req, res, next) => {
 
   // Handle file upload if present
   if (req.file) {
+    const baseUrl = process.env.BASE_URL || `${req.protocol}://${req.get('host')}`;
     const filePath = `/images/worker-profiles/${req.file.filename}`;
-    updateData.profilePicture = filePath;
+    const fullUrl = `${baseUrl}${filePath}`;
+    updateData.profilePicture = fullUrl;
   }
 
   const profile = await WorkerProfile.findOneAndUpdate(

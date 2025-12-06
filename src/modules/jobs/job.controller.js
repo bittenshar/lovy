@@ -27,7 +27,7 @@ const JOB_PUBLISH_STATUS = Object.freeze({
   PUBLISHED: 'published',
 });
 
-const BUSINESS_RESPONSE_FIELDS = 'businessName name logoUrl logo location address line1 city state postalCode country latitude longitude allowedRadius';
+const BUSINESS_RESPONSE_FIELDS = 'businessName name logoUrl logo logoSmall logoMedium location address line1 city state postalCode country latitude longitude allowedRadius';
 
 const parsePublishToggle = (value) => {
   if (typeof value === 'boolean') return value;
@@ -75,6 +75,10 @@ const buildJobResponse = async (job, currentUser) => {
     j.businessDetails = j.business;
     j.businessName = j.business.businessName || j.business.name || j.businessName || null;
     j.businessLogoUrl = normalizeLogoUrl(j.business);
+    
+    // Add optimized logo sizes for Flutter/client use
+    j.businessLogoSmall = j.business.logoSmall || j.businessLogoUrl;
+    j.businessLogoMedium = j.business.logoMedium || j.businessLogoUrl;
 
     // Enhanced location handling
     if (!j.location && j.business.location) {
@@ -99,6 +103,10 @@ const buildJobResponse = async (job, currentUser) => {
     j.businessId = j.businessId._id.toString();
     j.businessName = j.businessDetails.businessName || j.businessDetails.name || j.businessName || null;
     j.businessLogoUrl = normalizeLogoUrl(j.businessDetails);
+    
+    // Add optimized logo sizes for Flutter/client use
+    j.businessLogoSmall = j.businessDetails.logoSmall || j.businessLogoUrl;
+    j.businessLogoMedium = j.businessDetails.logoMedium || j.businessLogoUrl;
 
     // Enhanced location handling for populated businessId
     if (!j.location && j.businessDetails.location) {

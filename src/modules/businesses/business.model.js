@@ -97,6 +97,8 @@ const businessSchema = new mongoose.Schema(
     logoMedium: { type: String, trim: true }, // Cached medium variant
     logoSignature: { type: String, trim: true }, // Hash of current logo source to detect changes
     logoOptimizedAt: { type: Date },
+    logoUrl: { type: String, trim: true }, // File upload URL path
+    logoLocalPath: { type: String, trim: true }, // Local file system path
     isActive: { type: Boolean, default: true },
     stats: {
       jobsPosted: { type: Number, default: 0 },

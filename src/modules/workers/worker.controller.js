@@ -135,14 +135,22 @@ exports.updateWorkerProfile = catchAsync(async (req, res, next) => {
   await req.user.save();
 
   const profileFields = ['bio', 'skills', 'experience', 'languages', 'profilePicture', 'portfolioImages'];
+  const updateData = profileFields.reduce((acc, field) => {
+    if (field in req.body) {
+      acc[field] = req.body[field];
+    }
+    return acc;
+  }, {});
+
+  // Handle file upload if present
+  if (req.file) {
+    const filePath = `/images/worker-profiles/${req.file.filename}`;
+    updateData.profilePicture = filePath;
+  }
+
   const profile = await WorkerProfile.findOneAndUpdate(
     { user: workerId },
-    profileFields.reduce((acc, field) => {
-      if (field in req.body) {
-        acc[field] = req.body[field];
-      }
-      return acc;
-    }, {}),
+    updateData,
     { new: true }
   );
 

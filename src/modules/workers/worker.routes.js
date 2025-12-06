@@ -1,6 +1,7 @@
 const express = require('express');
 const controller = require('./worker.controller');
 const { protect, restrictTo } = require('../../shared/middlewares/auth.middleware');
+const { uploadWorkerProfile } = require('../../shared/middlewares/upload.middleware');
 
 const router = express.Router();
 
@@ -8,7 +9,7 @@ router.use(protect);
 
 // Worker's own profile and data routes
 router.get('/me', restrictTo('worker'), controller.getWorkerProfile);
-router.patch('/me', restrictTo('worker'), controller.updateWorkerProfile);
+router.patch('/me', restrictTo('worker'), uploadWorkerProfile, controller.updateWorkerProfile);
 router.get('/me/shifts', restrictTo('worker'), controller.getWorkerShifts);
 router.get('/me/dashboard', restrictTo('worker'), controller.getWorkerDashboard);
 router.get('/me/employment/history', restrictTo('worker'), controller.getEmploymentHistory);

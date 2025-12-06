@@ -249,6 +249,14 @@ exports.updateBusiness = catchAsync(async (req, res) => {
     requiredPermissions: 'edit_business',
   });
 
+  // Handle file upload if present
+  if (req.file) {
+    // Store the file path in the database
+    const filePath = `/images/business-logos/${req.file.filename}`;
+    business.logoUrl = filePath;
+    business.logoLocalPath = filePath;
+  }
+
   Object.assign(business, req.body);
   await business.save();
   res.status(200).json({ status: 'success', data: business });

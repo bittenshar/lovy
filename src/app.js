@@ -2,8 +2,10 @@ const express = require('express');
 const cors = require('cors');
 const morgan = require('morgan');
 const cookieParser = require('cookie-parser');
+const path = require('path');
 const AppError = require('./shared/utils/appError');
 const globalErrorHandler = require('./shared/middlewares/globalErrorHandler');
+const multerErrorHandler = require('./shared/middlewares/multerErrorHandler');
 const requestTimeout = require('./shared/middlewares/requestTimeout');
 const routes = require('./routes');
 
@@ -41,6 +43,9 @@ if (process.env.NODE_ENV !== 'test') {
 app.use(express.json({ limit: '10mb' }));
 app.use(cookieParser());
 
+// Serve static files from the public directory (for uploaded images)
+app.use('/images', express.static(path.join(__dirname, '../public/images')));
+
 // Add request timeout middleware only when running on dedicated servers
 const isServerless = Boolean(
   process.env.VERCEL ||
@@ -67,6 +72,8 @@ app.all('*', (req, res, next) => {
   next(new AppError(`Route ${req.originalUrl} not found`, 404));
 });
 
+// Multer error handler must be before global error handler
+app.use(multerErrorHandler);
 
 app.use(globalErrorHandler);
 

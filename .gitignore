@@ -1,1 +1,7 @@
 .vercel
+
+# Uploaded files (keep directories with .gitkeep)
+public/images/business-logos/*
+!public/images/business-logos/.gitkeep
+public/images/worker-profiles/*
+!public/images/worker-profiles/.gitkeep

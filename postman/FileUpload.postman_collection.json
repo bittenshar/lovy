@@ -1,0 +1,185 @@
+{
+  "info": {
+    "name": "File Upload API Tests",
+    "description": "Test business logo and worker profile uploads",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Business Logo Upload",
+      "item": [
+        {
+          "name": "Update Business with Logo",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "var bid = pm.environment.get('business_id');",
+                  "var token = pm.environment.get('employer_token');",
+                  "if (bid) pm.environment.set('business_id', bid.trim());",
+                  "if (token) pm.environment.set('employer_token', token.trim());"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{employer_token}}",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "logo",
+                  "type": "file",
+                  "src": []
+                },
+                {
+                  "key": "name",
+                  "value": "Business Name",
+                  "type": "text"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/businesses/{{business_id}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "businesses", "{{business_id}}"]
+            }
+          }
+        },
+        {
+          "name": "View Business Logo",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}{{businessLogoUrl}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["{{businessLogoUrl}}"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Worker Profile Upload",
+      "item": [
+        {
+          "name": "Update Worker Profile with Image",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "var token = pm.environment.get('worker_token');",
+                  "if (token) pm.environment.set('worker_token', token.trim());"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{worker_token}}",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "profileImage",
+                  "type": "file",
+                  "src": []
+                },
+                {
+                  "key": "firstName",
+                  "value": "John",
+                  "type": "text"
+                },
+                {
+                  "key": "lastName",
+                  "value": "Doe",
+                  "type": "text"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/workers/me",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "workers", "me"]
+            }
+          }
+        },
+        {
+          "name": "View Worker Profile Image",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}{{workerProfileUrl}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["{{workerProfileUrl}}"]
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:3000",
+      "type": "string"
+    },
+    {
+      "key": "employer_token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "worker_token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "business_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "businessLogoUrl",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "workerProfileUrl",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "// Trim all variables to remove whitespace",
+          "var vars = pm.environment.values.members;",
+          "Object.keys(vars).forEach(function(key) {",
+          "  if (typeof vars[key] === 'string') {",
+          "    pm.environment.set(key, vars[key].trim());",
+          "  }",
+          "});"
+        ]
+      }
+    }
+  ]
+}

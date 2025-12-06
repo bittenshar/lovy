@@ -1,0 +1,356 @@
+{
+  "info": {
+    "_postman_id": "file-upload-collection",
+    "name": "File Upload API Tests",
+    "description": "Test business logo and worker profile image uploads",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Business Logo Upload",
+      "item": [
+        {
+          "name": "Update Business with Logo",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    pm.test('Response status is 200', function () {",
+                  "        pm.response.to.have.status(200);",
+                  "    });",
+                  "    ",
+                  "    pm.test('Response has logoUrl', function () {",
+                  "        var jsonData = pm.response.json();",
+                  "        pm.expect(jsonData.data.logoUrl).to.exist;",
+                  "        pm.expect(jsonData.data.logoUrl).to.include('/images/business-logos/');",
+                  "    });",
+                  "    ",
+                  "    pm.test('Response has success status', function () {",
+                  "        var jsonData = pm.response.json();",
+                  "        pm.expect(jsonData.status).to.equal('success');",
+                  "    });",
+                  "    ",
+                  "    // Save logoUrl for later use",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.environment.set('businessLogoUrl', jsonData.data.logoUrl);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{employer_token}}",
+                "type": "text"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "logo",
+                  "type": "file",
+                  "src": []
+                },
+                {
+                  "key": "name",
+                  "value": "Updated Business Name",
+                  "type": "text"
+                },
+                {
+                  "key": "description",
+                  "value": "Business description with logo",
+                  "type": "text"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/businesses/{{business_id}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "businesses",
+                "{{business_id}}"
+              ]
+            },
+            "description": "Upload a business logo. Make sure to:\n1. Select file in the 'logo' field\n2. Replace {{baseUrl}} with your API URL\n3. Replace {{business_id}} with actual business ID\n4. Set {{employer_token}} with your auth token"
+          },
+          "response": []
+        },
+        {
+          "name": "Access Business Logo",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}{{businessLogoUrl}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "{{businessLogoUrl}}"
+              ]
+            },
+            "description": "Access the uploaded business logo. This uses the URL returned from the previous request."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Worker Profile Image Upload",
+      "item": [
+        {
+          "name": "Update Worker Profile with Image",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    pm.test('Response status is 200', function () {",
+                  "        pm.response.to.have.status(200);",
+                  "    });",
+                  "    ",
+                  "    pm.test('Response has profilePicture', function () {",
+                  "        var jsonData = pm.response.json();",
+                  "        pm.expect(jsonData.data.profile.profilePicture).to.exist;",
+                  "        pm.expect(jsonData.data.profile.profilePicture).to.include('/images/worker-profiles/');",
+                  "    });",
+                  "    ",
+                  "    pm.test('Response has success status', function () {",
+                  "        var jsonData = pm.response.json();",
+                  "        pm.expect(jsonData.status).to.equal('success');",
+                  "    });",
+                  "    ",
+                  "    // Save profilePictureUrl for later use",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.environment.set('workerProfileUrl', jsonData.data.profile.profilePicture);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{worker_token}}",
+                "type": "text"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "profileImage",
+                  "type": "file",
+                  "src": []
+                },
+                {
+                  "key": "firstName",
+                  "value": "John",
+                  "type": "text"
+                },
+                {
+                  "key": "lastName",
+                  "value": "Doe",
+                  "type": "text"
+                },
+                {
+                  "key": "phone",
+                  "value": "+919876543210",
+                  "type": "text"
+                },
+                {
+                  "key": "bio",
+                  "value": "Experienced professional",
+                  "type": "text"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/workers/me",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "workers",
+                "me"
+              ]
+            },
+            "description": "Upload a worker profile image. Make sure to:\n1. Select file in the 'profileImage' field\n2. Replace {{baseUrl}} with your API URL (e.g., http://localhost:3000)\n3. Set {{worker_token}} with your worker auth token"
+          },
+          "response": []
+        },
+        {
+          "name": "Access Worker Profile Image",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}{{workerProfileUrl}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "{{workerProfileUrl}}"
+              ]
+            },
+            "description": "Access the uploaded worker profile image. This uses the URL returned from the previous request."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Error Test Cases",
+      "item": [
+        {
+          "name": "Upload Invalid File Type",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Should reject non-image files', function () {",
+                  "    pm.response.to.have.status(400);",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.status).to.equal('error');",
+                  "    pm.expect(jsonData.message).to.include('image');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{employer_token}}",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "logo",
+                  "type": "file",
+                  "src": []
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/businesses/{{business_id}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "businesses",
+                "{{business_id}}"
+              ]
+            },
+            "description": "Try uploading a non-image file (e.g., .txt, .pdf) to test validation. Should receive 400 error."
+          },
+          "response": []
+        },
+        {
+          "name": "Upload Without Authentication",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Should reject unauthenticated request', function () {",
+                  "    pm.response.to.have.status(401);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "logo",
+                  "type": "file",
+                  "src": []
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/businesses/{{business_id}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "businesses",
+                "{{business_id}}"
+              ]
+            },
+            "description": "Try uploading without Authorization header. Should receive 401 error."
+          },
+          "response": []
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:3000",
+      "type": "string"
+    },
+    {
+      "key": "employer_token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "worker_token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "business_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "businessLogoUrl",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "workerProfileUrl",
+      "value": "",
+      "type": "string"
+    }
+  ]
+}

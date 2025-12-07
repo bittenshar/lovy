@@ -13,6 +13,7 @@ const {
   generateLogoVariants,
   isDataUri
 } = require('../../shared/utils/logoUrlMinimizer');
+const { getOptimizedLogoUrl } = require('../../shared/utils/cloudinaryHelper');
 
 const LOGO_CONTEXT_TO_FIELD = [
   { context: 'job-list', field: 'logoSmall' },
@@ -251,12 +252,19 @@ exports.updateBusiness = catchAsync(async (req, res) => {
 
   // Handle file upload if present
   if (req.file) {
-    // Store the full URL in the database so clients get absolute paths
-    const baseUrl = process.env.BASE_URL || `${req.protocol}://${req.get('host')}`;
-    const filePath = `/images/business-logos/${req.file.filename}`;
-    const fullUrl = `${baseUrl}${filePath}`;
-    business.logoUrl = fullUrl;
-    business.logoLocalPath = filePath;
+    if (process.env.CLOUDINARY_CLOUD_NAME && process.env.CLOUDINARY_API_KEY) {
+      // For Cloudinary: req.file.path contains the full URL, apply optimization
+      // The optimization is already applied during upload via multer-storage-cloudinary params
+      business.logoUrl = req.file.path;
+      business.logoLocalPath = req.file.path;
+    } else {
+      // For local storage: construct the URL
+      const baseUrl = process.env.BASE_URL || `${req.protocol}://${req.get('host')}`;
+      const filePath = `/images/business-logos/${req.file.filename}`;
+      const fullUrl = `${baseUrl}${filePath}`;
+      business.logoUrl = fullUrl;
+      business.logoLocalPath = filePath;
+    }
   }
 
   Object.assign(business, req.body);

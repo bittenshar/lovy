@@ -3,6 +3,7 @@ const WorkerProfile = require('./workerProfile.model');
 const User = require('../users/user.model');
 const Application = require('../applications/application.model');
 const AttendanceRecord = require('../attendance/attendance.model');
+const { getOptimizedProfileUrl } = require('../../shared/utils/cloudinaryHelper');
 const Shift = require('../shifts/shift.model');
 const SwapRequest = require('../shifts/swapRequest.model');
 const WorkerFeedback = require('./feedback.model');
@@ -144,10 +145,16 @@ exports.updateWorkerProfile = catchAsync(async (req, res, next) => {
 
   // Handle file upload if present
   if (req.file) {
-    const baseUrl = process.env.BASE_URL || `${req.protocol}://${req.get('host')}`;
-    const filePath = `/images/worker-profiles/${req.file.filename}`;
-    const fullUrl = `${baseUrl}${filePath}`;
-    updateData.profilePicture = fullUrl;
+    if (process.env.CLOUDINARY_CLOUD_NAME && process.env.CLOUDINARY_API_KEY) {
+      // For Cloudinary: req.file.path contains the full URL (already optimized during upload)
+      updateData.profilePicture = req.file.path;
+    } else {
+      // For local storage: construct the URL
+      const baseUrl = process.env.BASE_URL || `${req.protocol}://${req.get('host')}`;
+      const filePath = `/images/worker-profiles/${req.file.filename}`;
+      const fullUrl = `${baseUrl}${filePath}`;
+      updateData.profilePicture = fullUrl;
+    }
   }
 
   const profile = await WorkerProfile.findOneAndUpdate(

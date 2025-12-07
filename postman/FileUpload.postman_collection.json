@@ -21,6 +21,40 @@
                   "if (token) pm.environment.set('employer_token', token.trim());"
                 ]
               }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    pm.test('✅ Response status is 200', function () {",
+                  "        pm.response.to.have.status(200);",
+                  "    });",
+                  "    ",
+                  "    var jsonData = pm.response.json();",
+                  "    ",
+                  "    pm.test('✅ Response has logoUrl', function () {",
+                  "        pm.expect(jsonData.data.logoUrl).to.exist;",
+                  "        pm.expect(jsonData.data.logoUrl).to.be.a('string');",
+                  "    });",
+                  "    ",
+                  "    pm.test('✅ Response status is success', function () {",
+                  "        pm.expect(jsonData.status).to.equal('success');",
+                  "    });",
+                  "    ",
+                  "    // Save logoUrl for later use",
+                  "    if (jsonData.data.logoUrl) {",
+                  "        pm.environment.set('businessLogoUrl', jsonData.data.logoUrl);",
+                  "        console.log('Saved logoUrl:', jsonData.data.logoUrl);",
+                  "    }",
+                  "}",
+                  "else {",
+                  "    pm.test('❌ Error: ' + pm.response.code, function () {",
+                  "        console.log(pm.response.text());",
+                  "    });",
+                  "}"
+                ]
+              }
             }
           ],
           "request": {
@@ -58,12 +92,19 @@
           "name": "View Business Logo",
           "request": {
             "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "*/*",
+                "type": "text"
+              }
+            ],
             "url": {
-              "raw": "{{baseUrl}}{{businessLogoUrl}}",
-              "host": ["{{baseUrl}}"],
-              "path": ["{{businessLogoUrl}}"]
+              "raw": "{{businessLogoUrl}}",
+              "host": ["{{businessLogoUrl}}"]
             }
-          }
+          },
+          "description": "View the uploaded business logo using the URL from the previous request. The URL will be automatically saved after uploading."
         }
       ]
     },
@@ -79,6 +120,40 @@
                 "exec": [
                   "var token = pm.environment.get('worker_token');",
                   "if (token) pm.environment.set('worker_token', token.trim());"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    pm.test('✅ Response status is 200', function () {",
+                  "        pm.response.to.have.status(200);",
+                  "    });",
+                  "    ",
+                  "    var jsonData = pm.response.json();",
+                  "    ",
+                  "    pm.test('✅ Response has profilePicture', function () {",
+                  "        pm.expect(jsonData.data.profile.profilePicture).to.exist;",
+                  "        pm.expect(jsonData.data.profile.profilePicture).to.be.a('string');",
+                  "    });",
+                  "    ",
+                  "    pm.test('✅ Response status is success', function () {",
+                  "        pm.expect(jsonData.status).to.equal('success');",
+                  "    });",
+                  "    ",
+                  "    // Save profilePictureUrl for later use",
+                  "    if (jsonData.data.profile.profilePicture) {",
+                  "        pm.environment.set('workerProfileUrl', jsonData.data.profile.profilePicture);",
+                  "        console.log('Saved profilePicture:', jsonData.data.profile.profilePicture);",
+                  "    }",
+                  "}",
+                  "else {",
+                  "    pm.test('❌ Error: ' + pm.response.code, function () {",
+                  "        console.log(pm.response.text());",
+                  "    });",
+                  "}"
                 ]
               }
             }
@@ -123,12 +198,19 @@
           "name": "View Worker Profile Image",
           "request": {
             "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "*/*",
+                "type": "text"
+              }
+            ],
             "url": {
-              "raw": "{{baseUrl}}{{workerProfileUrl}}",
-              "host": ["{{baseUrl}}"],
-              "path": ["{{workerProfileUrl}}"]
+              "raw": "{{workerProfileUrl}}",
+              "host": ["{{workerProfileUrl}}"]
             }
-          }
+          },
+          "description": "View the uploaded worker profile image using the URL from the previous request. The URL will be automatically saved after uploading."
         }
       ]
     }

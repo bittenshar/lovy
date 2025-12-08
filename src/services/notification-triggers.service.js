@@ -292,11 +292,11 @@ exports.notifyMultipleUsers = async (userIds = [], options = {}) => {
 };
 
 module.exports = {
-  notifyNewJobPosted,
-  notifyApplicationReceived,
-  notifyApplicationStatusChanged,
-  notifyShiftReminder,
-  notifyPaymentUpdate,
-  notifyNewMessage,
-  notifyMultipleUsers
+  notifyNewJobPosted: exports.notifyNewJobPosted,
+  notifyApplicationReceived: exports.notifyApplicationReceived,
+  notifyApplicationStatusChanged: exports.notifyApplicationStatusChanged,
+  notifyShiftReminder: exports.notifyShiftReminder,
+  notifyPaymentUpdate: exports.notifyPaymentUpdate,
+  notifyNewMessage: exports.notifyNewMessage,
+  notifyMultipleUsers: exports.notifyMultipleUsers
 };

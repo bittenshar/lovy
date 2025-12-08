@@ -1,6 +1,7 @@
 const Application = require('./application.model');
 const Job = require('../jobs/job.model');
 const WorkerProfile = require('../workers/workerProfile.model');
+const User = require('../users/user.model');
 const catchAsync = require('../../shared/utils/catchAsync');
 const AppError = require('../../shared/utils/appError');
 const {
@@ -8,6 +9,7 @@ const {
   getAccessibleBusinessIds
 } = require('../../shared/utils/businessAccess');
 const { buildApplicationPresenter } = require('./application.presenter');
+const notificationTriggers = require('../../services/notification-triggers.service');
 
 const APPLICATION_FREE_QUOTA = 3;
 const parsePositiveInt = (value, fallback) => {
@@ -119,6 +121,18 @@ exports.createApplication = catchAsync(async (req, res, next) => {
     req.user.freeApplicationsUsed += 1;
     await req.user.save();
   }
+
+  // Send Firebase notifications to employer about new application
+  setImmediate(async () => {
+    try {
+      const employer = await User.findById(job.employer);
+      if (employer) {
+        await notificationTriggers.notifyApplicationReceived(application, job, req.user, employer);
+      }
+    } catch (err) {
+      console.error('Failed to send application notification:', err.message);
+    }
+  });
 
   res.status(201).json({ status: 'success', data: application });
 });
@@ -272,7 +286,10 @@ exports.updateApplication = catchAsync(async (req, res, next) => {
     if (!['pending', 'hired', 'rejected'].includes(req.body.status)) {
       return next(new AppError('Invalid status', 400));
     }
+    
+    const previousStatus = application.status;
     application.status = req.body.status;
+    
     if (req.body.status === 'hired') {
       application.hiredAt = new Date();
       application.withdrawnAt = undefined;
@@ -281,7 +298,28 @@ exports.updateApplication = catchAsync(async (req, res, next) => {
       application.rejectedAt = new Date();
       application.withdrawnAt = undefined;
     }
+    
     await application.save();
+    
+    // Send Firebase notification to worker about status change
+    if (previousStatus !== req.body.status) {
+      setImmediate(async () => {
+        try {
+          const worker = await User.findById(application.worker);
+          if (worker) {
+            await notificationTriggers.notifyApplicationStatusChanged(
+              application,
+              req.body.status,
+              worker,
+              application.job
+            );
+          }
+        } catch (err) {
+          console.error('Failed to send application status notification:', err.message);
+        }
+      });
+    }
+    
     return res.status(200).json({ status: 'success', data: application });
   }
   return next(new AppError('Not authorized to update application', 403));

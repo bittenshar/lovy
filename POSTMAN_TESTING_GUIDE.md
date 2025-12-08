@@ -35,8 +35,8 @@ Before running tests, configure your environment:
 
 **Step 1: Login as Worker**
 ```
-📍 Folder: 🔐 Authentication
-🔗 Request: Login - Worker
+📍 Folder: � Authentication
+� Request: Login - Worker
 ```
 - Click **"Send"**
 - ✅ Status should be 200
@@ -45,8 +45,8 @@ Before running tests, configure your environment:
 
 **Step 2: Login as Employer** (Optional)
 ```
-📍 Folder: 🔐 Authentication
-🔗 Request: Login - Employer
+📍 Folder: � Authentication
+� Request: Login - Employer
 ```
 - Saves `employer_token` for broadcast notifications
 
@@ -54,7 +54,7 @@ Before running tests, configure your environment:
 
 **Step 3: Register iOS Device**
 ```
-📍 Folder: 📱 Device Registration
+📍 Folder: � Device Registration
 🔗 Request: Register OneSignal ID (iOS)
 ```
 - Click **"Send"**
@@ -64,8 +64,8 @@ Before running tests, configure your environment:
 
 **Step 4: Check Registration Status**
 ```
-📍 Folder: 📱 Device Registration
-🔗 Request: Get OneSignal Status
+📍 Folder: � Device Registration
+� Request: Get OneSignal Status
 ```
 - Verifies device is registered
 - Shows registration timestamp
@@ -75,8 +75,8 @@ Before running tests, configure your environment:
 
 **Step 5: Send Test Notification**
 ```
-📍 Folder: 📨 Send Notifications
-🔗 Request: Test Notification
+📍 Folder: � Send Notifications
+� Request: Test Notification
 ```
 - Quickest way to test
 - Should receive notification on device
@@ -126,7 +126,7 @@ Pre-configured with:
 **Step 10: Check Notification Status**
 ```
 📍 Folder: ⏰ Advanced Features
-🔗 Request: Get Notification Status
+� Request: Get Notification Status
 ```
 - Uses last sent notification ID
 - Shows: recipients, failed, converted

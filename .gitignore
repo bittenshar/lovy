@@ -1,5 +1,9 @@
 .vercel
 
+# Firebase service account (KEEP PRIVATE!)
+firebase-service-account.json
+work-connect-nodejs-firebase-adminsdk-fbsvc-84d5f65aea.json
+
 # Uploaded files (keep directories with .gitkeep)
 public/images/business-logos/*
 !public/images/business-logos/.gitkeep

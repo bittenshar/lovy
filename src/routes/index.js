@@ -12,6 +12,7 @@ const shiftRoutes = require('../modules/shifts/shift.routes');
 const shiftController = require('../modules/shifts/shift.controller');
 const { protect: protectAuth } = require('../shared/middlewares/auth.middleware');
 const notificationRoutes = require('../modules/notifications/notification.routes');
+const fcmRoutes = require('../routes/notification.routes'); // Firebase Cloud Messaging routes
 const conversationRoutes = require('../modules/conversations/conversation.routes');
 const budgetRoutes = require('../modules/budgets/budget.routes');
 const paymentRoutes = require('../modules/payments/payment.routes');
@@ -37,6 +38,7 @@ router.use('/attendance', attendanceRoutes);
 router.use('/shift-swaps', shiftRoutes);
 router.use('/shifts', shiftsRouter);
 router.use('/notifications', notificationRoutes);
+router.use('/fcm', fcmRoutes); // Firebase Cloud Messaging routes
 router.use('/conversations', conversationRoutes);
 router.use('/budget', budgetRoutes);
 router.use('/payments', paymentRoutes);

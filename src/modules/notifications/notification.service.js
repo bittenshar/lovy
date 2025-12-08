@@ -1,8 +1,8 @@
 const mongoose = require('mongoose');
 const Notification = require('./notification.model');
 const AppError = require('../../shared/utils/appError');
-const onesignalService = require('../../shared/services/onesignal.service');
 const User = require('../users/user.model');
+const firebaseService = require('../../services/firebase-notification.service');
 
 const PRIORITIES = new Set(['low', 'medium', 'high']);
 
@@ -100,32 +100,32 @@ const createNotification = async ({
   // Create notification in database
   const notification = await Notification.create(payload);
 
-  // Send OneSignal push notification asynchronously (non-blocking)
+  // Send Firebase Cloud Messaging push notification asynchronously (non-blocking)
   setImmediate(async () => {
     try {
-      // Get user and check if they have OneSignal ID
+      // Get user and their FCM token
       const recipientUser = await User.findById(targetId);
       
-      if (recipientUser && recipientUser.onesignalId) {
-        // Send push notification to the specific user
-        await onesignalService.sendToUser(recipientUser.onesignalId, {
+      if (recipientUser && recipientUser.fcmToken) {
+        // Send FCM push notification to the specific user
+        await firebaseService.sendToDevice(recipientUser.fcmToken, {
           title: payload.title,
-          message: payload.message,
+          body: payload.message,
           data: {
             type: payload.type,
             priority: payload.priority,
             notificationId: notification._id.toString(),
-            actionUrl: actionUrl || null,
-            metadata: metadata || {}
+            actionUrl: actionUrl?.toString() || '',
+            metadata: JSON.stringify(metadata || {})
           }
         });
         
-        console.log(`✅ Push notification sent to user ${targetId}: ${payload.title}`);
+        console.log(`✅ Firebase push notification sent to user ${targetId}: ${payload.title}`);
       } else {
-        console.log(`ℹ️ User ${targetId} has no OneSignal ID, skipping push notification`);
+        console.log(`ℹ️ User ${targetId} has no FCM token registered, skipping push notification`);
       }
     } catch (error) {
-      console.error(`❌ Failed to send push notification for user ${targetId}:`, error.message);
+      console.error(`❌ Failed to send Firebase push notification for user ${targetId}:`, error.message);
       // Don't throw error - notification in DB is created successfully
     }
   });
@@ -147,7 +147,7 @@ const sendSafeNotification = async (payload = {}) => {
 };
 
 /**
- * Send push notification to multiple users
+ * Send push notification to multiple users with Firebase
  * @param {Array} userIds - Array of user IDs
  * @param {Object} options - Notification options {title, message, data, etc}
  */
@@ -158,32 +158,47 @@ const sendBulkPushNotification = async (userIds = [], options = {}) => {
   }
 
   try {
-    // Get all users with OneSignal IDs
-    const users = await User.find({ _id: { $in: userIds }, onesignalId: { $exists: true, $ne: null } });
+    // Get all users with FCM tokens
+    const users = await User.find({ _id: { $in: userIds }, fcmToken: { $exists: true, $ne: null } });
     
     if (users.length === 0) {
-      console.log('No users with OneSignal IDs found');
+      console.log('No users with FCM tokens found');
       return;
     }
 
-    // Send push notifications to all users
-    const pushPromises = users.map(user =>
-      onesignalService.sendToUser(user.onesignalId, {
-        title: options.title || 'Notification',
-        message: options.message || 'You have a new notification',
-        data: {
-          ...options.data,
-          notificationId: options.notificationId || null
-        }
-      }).catch(error => {
-        console.error(`Failed to send push to ${user._id}:`, error.message);
-      })
-    );
+    // Extract FCM tokens
+    const fcmTokens = users.map(user => user.fcmToken).filter(token => token);
 
-    await Promise.all(pushPromises);
-    console.log(`✅ Push notifications sent to ${users.length} users`);
+    // Send push notifications via Firebase
+    if (fcmTokens.length > 0) {
+      // Convert all data values to strings for Firebase
+      const firebaseData = {
+        type: (options.type || 'system').toString(),
+        priority: (options.priority || 'medium').toString(),
+        notificationId: options.notificationId?.toString() || '',
+        actionUrl: (options.actionUrl || '').toString()
+      };
+      
+      // Add additional data fields as strings
+      if (options.data) {
+        Object.keys(options.data).forEach(key => {
+          const value = options.data[key];
+          if (value !== null && value !== undefined) {
+            firebaseData[key] = typeof value === 'object' ? JSON.stringify(value) : value.toString();
+          }
+        });
+      }
+
+      await firebaseService.sendToDevices(fcmTokens, {
+        title: options.title || 'Notification',
+        body: options.message || 'You have a new notification',
+        data: firebaseData
+      });
+      
+      console.log(`✅ Firebase push notifications sent to ${fcmTokens.length} devices`);
+    }
   } catch (error) {
-    console.error('Failed to send bulk push notifications:', error.message);
+    console.error('Failed to send bulk Firebase push notifications:', error.message);
   }
 };
 

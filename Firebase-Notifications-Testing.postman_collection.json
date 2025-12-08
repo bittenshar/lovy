@@ -478,65 +478,7 @@
         }
       ]
     },
-    {
-      "name": "Message Notifications",
-      "item": [
-        {
-          "name": "Send Message (Triggers Message Notification)",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "exec": [
-                  "if (pm.response.code === 201 || pm.response.code === 200) {",
-                  "    console.log('✅ New Message notification sent to recipient');",
-                  "}"
-                ]
-              }
-            }
-          ],
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{workerToken}}"
-              },
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"message\": \"Hello! This message should trigger a Firebase notification!\",\n  \"recipientId\": \"{{employerId}}\"\n}"
-            },
-            "url": {
-              "raw": "{{baseUrl}}/api/messages\",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "messages"]
-            }
-          }
-        },
-        {
-          "name": "Get Messages",
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{workerToken}}"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/api/messages",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "messages"]
-            }
-          }
-        }
-      ]
-    },
+  
     {
       "name": "Notification History",
       "item": [

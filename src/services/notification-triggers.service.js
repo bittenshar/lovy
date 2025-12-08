@@ -8,42 +8,12 @@ const firebaseService = require('./firebase-notification.service');
 const User = require('../modules/users/user.model');
 
 /**
- * Helper function to send Firebase push notification to a user
- * @param {Object} user - User object with fcmToken
- * @param {Object} payload - Notification payload {title, body, data}
- */
-const sendFirebasePush = async (user, payload) => {
-  try {
-    if (user && user.fcmToken) {
-      // Ensure all data values are strings for Firebase
-      const firebaseData = {};
-      if (payload.data) {
-        Object.keys(payload.data).forEach(key => {
-          const value = payload.data[key];
-          if (value !== null && value !== undefined) {
-            firebaseData[key] = typeof value === 'object' ? JSON.stringify(value) : value.toString();
-          }
-        });
-      }
-      
-      await firebaseService.sendToDevice(user.fcmToken, {
-        title: payload.title,
-        body: payload.body,
-        data: firebaseData
-      });
-    }
-  } catch (error) {
-    console.error(`Failed to send Firebase notification to user ${user._id}:`, error.message);
-  }
-};
-
-/**
  * Send notification when a new job is posted
  * @param {Object} job - Job object
  * @param {Object} employer - Employer user object
  * @param {Array} targetWorkerIds - Worker IDs to notify (optional, for targeted notifications)
  */
-const notifyNewJobPosted = async (job, employer, targetWorkerIds = []) => {
+exports.notifyNewJobPosted = async (job, employer, targetWorkerIds = []) => {
   try {
     const message = `New job: ${job.title} - $${job.hourlyRate}/hr`;
     
@@ -69,42 +39,20 @@ const notifyNewJobPosted = async (job, employer, targetWorkerIds = []) => {
       }
     }
     
-    // Broadcast to all workers (create notification in DB + send Firebase bulk push)
+    // Broadcast to all workers (create notification in DB + send bulk push)
     const allWorkers = await User.find({ userType: 'worker' }).select('_id fcmToken');
     if (allWorkers.length > 0) {
-      // Send in-app notifications for all workers
-      for (const worker of allWorkers) {
-        createNotification({
-          recipientId: worker._id,
-          senderId: employer._id,
-          type: 'job_posted',
-          priority: 'high',
-          title: '🎯 New Job Available',
-          message,
-          actionUrl: `/jobs/${job._id}`,
-          metadata: {
-            jobId: job._id.toString(),
-            jobTitle: job.title,
-            hourlyRate: job.hourlyRate,
-            location: job.location
-          }
-        }).catch(err => console.error('Failed to create in-app notification:', err));
-      }
-
-      // Send Firebase push notifications
       await sendBulkPushNotification(
         allWorkers.map(w => w._id),
         {
           title: '🎯 New Job Available',
           message,
-          type: 'job_posted',
-          priority: 'high',
-          actionUrl: `/jobs/${job._id}`,
           data: {
+            type: 'job_posted',
+            priority: 'high',
             jobId: job._id.toString(),
             jobTitle: job.title,
-            hourlyRate: job.hourlyRate,
-            location: job.location
+            actionUrl: `/jobs/${job._id}`
           }
         }
       );
@@ -123,11 +71,11 @@ const notifyNewJobPosted = async (job, employer, targetWorkerIds = []) => {
  * @param {Object} worker - Worker user object
  * @param {Object} employer - Employer user object
  */
-const notifyApplicationReceived = async (application, job, worker, employer) => {
+exports.notifyApplicationReceived = async (application, job, worker, employer) => {
   try {
     const message = `New application from ${worker.firstName || 'a worker'} for ${job.title}`;
     
-    // Create in-app notification for employer
+    // Notify employer
     await createNotification({
       recipientId: employer._id,
       senderId: worker._id,
@@ -141,21 +89,6 @@ const notifyApplicationReceived = async (application, job, worker, employer) => 
         jobId: job._id.toString(),
         workerId: worker._id.toString(),
         workerName: `${worker.firstName} ${worker.lastName}`.trim()
-      }
-    });
-
-    // Send Firebase push notification to employer
-    const employerData = await User.findById(employer._id);
-    await sendFirebasePush(employerData, {
-      title: '📄 New Application',
-      body: message,
-      data: {
-        type: 'application_received',
-        priority: 'high',
-        applicationId: application._id.toString(),
-        jobId: job._id.toString(),
-        workerId: worker._id.toString(),
-        actionUrl: `/applications/${application._id}`
       }
     });
     
@@ -172,7 +105,7 @@ const notifyApplicationReceived = async (application, job, worker, employer) => 
  * @param {Object} worker - Worker user object
  * @param {Object} job - Job object
  */
-const notifyApplicationStatusChanged = async (application, status, worker, job) => {
+exports.notifyApplicationStatusChanged = async (application, status, worker, job) => {
   try {
     const statusMessages = {
       approved: '✅ Application Approved! You got the job!',
@@ -183,7 +116,7 @@ const notifyApplicationStatusChanged = async (application, status, worker, job) 
     
     const message = statusMessages[status] || `Application status updated to ${status}`;
     
-    // Create in-app notification for worker
+    // Notify worker
     await createNotification({
       recipientId: worker._id,
       type: `application_${status}`,
@@ -196,21 +129,6 @@ const notifyApplicationStatusChanged = async (application, status, worker, job) 
         jobId: job._id.toString(),
         status,
         jobTitle: job.title
-      }
-    });
-
-    // Send Firebase push notification to worker
-    const workerData = await User.findById(worker._id);
-    await sendFirebasePush(workerData, {
-      title: 'Application Update',
-      body: message,
-      data: {
-        type: `application_${status}`,
-        priority: status === 'approved' ? 'high' : 'medium',
-        applicationId: application._id.toString(),
-        jobId: job._id.toString(),
-        status,
-        actionUrl: `/applications/${application._id}`
       }
     });
     
@@ -226,7 +144,7 @@ const notifyApplicationStatusChanged = async (application, status, worker, job) 
  * @param {Object} shift - Shift object
  * @param {string} type - 'reminder' | 'start' | 'end'
  */
-const notifyShiftReminder = async (worker, shift, type = 'reminder') => {
+exports.notifyShiftReminder = async (worker, shift, type = 'reminder') => {
   try {
     const reminderMessages = {
       reminder: `📌 Reminder: Your shift starts at ${shift.startTime}`,
@@ -236,7 +154,7 @@ const notifyShiftReminder = async (worker, shift, type = 'reminder') => {
     
     const message = reminderMessages[type] || reminderMessages.reminder;
     
-    // Create in-app notification
+    // Send notification
     await createNotification({
       recipientId: worker._id,
       type: `shift_${type}`,
@@ -249,20 +167,6 @@ const notifyShiftReminder = async (worker, shift, type = 'reminder') => {
         type,
         startTime: shift.startTime,
         endTime: shift.endTime
-      }
-    });
-
-    // Send Firebase push notification
-    const workerData = await User.findById(worker._id);
-    await sendFirebasePush(workerData, {
-      title: 'Shift Notification',
-      body: message,
-      data: {
-        type: `shift_${type}`,
-        shiftId: shift._id?.toString() || '',
-        startTime: shift.startTime,
-        endTime: shift.endTime,
-        actionUrl: '/my-shifts'
       }
     });
     
@@ -278,7 +182,7 @@ const notifyShiftReminder = async (worker, shift, type = 'reminder') => {
  * @param {Object} payment - Payment object
  * @param {string} type - 'received' | 'pending' | 'completed'
  */
-const notifyPaymentUpdate = async (user, payment, type = 'received') => {
+exports.notifyPaymentUpdate = async (user, payment, type = 'received') => {
   try {
     const paymentMessages = {
       received: `💰 Payment received: $${payment.amount}`,
@@ -288,7 +192,6 @@ const notifyPaymentUpdate = async (user, payment, type = 'received') => {
     
     const message = paymentMessages[type] || paymentMessages.received;
     
-    // Create in-app notification
     await createNotification({
       recipientId: user._id,
       type: `payment_${type}`,
@@ -301,19 +204,6 @@ const notifyPaymentUpdate = async (user, payment, type = 'received') => {
         amount: payment.amount,
         type,
         date: payment.date || new Date()
-      }
-    });
-
-    // Send Firebase push notification
-    const userData = await User.findById(user._id);
-    await sendFirebasePush(userData, {
-      title: 'Payment Update',
-      body: message,
-      data: {
-        type: `payment_${type}`,
-        amount: payment.amount.toString(),
-        paymentId: payment._id?.toString() || '',
-        actionUrl: '/payments'
       }
     });
     
@@ -329,12 +219,11 @@ const notifyPaymentUpdate = async (user, payment, type = 'received') => {
  * @param {Object} sender - Sender user object
  * @param {string} message - Message preview
  */
-const notifyNewMessage = async (recipient, sender, message) => {
+exports.notifyNewMessage = async (recipient, sender, message) => {
   try {
     const preview = message.length > 50 ? message.substring(0, 50) + '...' : message;
     const title = `💬 ${sender.firstName || 'Someone'} sent you a message`;
     
-    // Create in-app notification
     await createNotification({
       recipientId: recipient._id,
       senderId: sender._id,
@@ -346,19 +235,6 @@ const notifyNewMessage = async (recipient, sender, message) => {
       metadata: {
         senderId: sender._id.toString(),
         senderName: `${sender.firstName} ${sender.lastName}`.trim()
-      }
-    });
-
-    // Send Firebase push notification
-    const recipientData = await User.findById(recipient._id);
-    await sendFirebasePush(recipientData, {
-      title,
-      body: preview,
-      data: {
-        type: 'new_message',
-        senderId: sender._id.toString(),
-        senderName: `${sender.firstName} ${sender.lastName}`.trim(),
-        actionUrl: `/messages/${sender._id}`
       }
     });
     
@@ -373,7 +249,7 @@ const notifyNewMessage = async (recipient, sender, message) => {
  * @param {Array} userIds - Array of user IDs
  * @param {Object} options - {title, message, priority, actionUrl, metadata}
  */
-const notifyMultipleUsers = async (userIds = [], options = {}) => {
+exports.notifyMultipleUsers = async (userIds = [], options = {}) => {
   try {
     if (!userIds.length) {
       console.warn('No users provided for notification');
@@ -398,14 +274,15 @@ const notifyMultipleUsers = async (userIds = [], options = {}) => {
       )
     );
 
-    // Send Firebase bulk push notifications
+    // Send bulk push notifications
     await sendBulkPushNotification(userIds, {
       title: options.title || 'Notification',
       message: options.message || 'You have a new notification',
-      type: options.type || 'system',
-      priority: options.priority || 'medium',
-      actionUrl: options.actionUrl || '',
-      data: options.data || {}
+      data: {
+        type: options.type || 'system',
+        priority: options.priority || 'medium',
+        actionUrl: options.actionUrl || ''
+      }
     });
 
     console.log(`✅ Notification sent to ${userIds.length} users`);

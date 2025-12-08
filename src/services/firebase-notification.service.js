@@ -104,22 +104,37 @@ class FirebaseNotificationService {
     }
 
     try {
-      // Send to each device individually to handle errors gracefully
-      let successCount = 0;
-      let failureCount = 0;
-      
-      for (const token of fcmTokens) {
-        try {
-          await this.sendToDevice(token, payload);
-          successCount++;
-        } catch (error) {
-          failureCount++;
-          console.warn(`⚠️ Failed to send to token ${token.substring(0, 20)}...: ${error.message}`);
-        }
-      }
-      
-      console.log(`✅ Sent ${successCount} notifications, ${failureCount} failed`);
-      return { successCount, failureCount, failureMessages: [] };
+      const messages = fcmTokens.map(token => ({
+        notification: {
+          title: payload.title || 'Notification',
+          body: payload.body || '',
+        },
+        data: payload.data || {},
+        token,
+        android: {
+          priority: 'high',
+          notification: {
+            sound: 'default',
+            clickAction: 'FLUTTER_NOTIFICATION_CLICK',
+          },
+        },
+        apns: {
+          payload: {
+            aps: {
+              alert: {
+                title: payload.title,
+                body: payload.body,
+              },
+              sound: 'default',
+              'mutable-content': true,
+            },
+          },
+        },
+      }));
+
+      const response = await admin.messaging().sendAll(messages);
+      console.log(`✅ Sent ${response.successCount} notifications, ${response.failureCount} failed`);
+      return response;
     } catch (error) {
       console.error('❌ Error sending batch notifications:', error.message);
       throw error;

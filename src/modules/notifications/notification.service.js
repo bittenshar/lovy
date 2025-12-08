@@ -1,8 +1,8 @@
 const mongoose = require('mongoose');
 const Notification = require('./notification.model');
 const AppError = require('../../shared/utils/appError');
-const User = require('../users/user.model');
 const firebaseService = require('../../services/firebase-notification.service');
+const User = require('../users/user.model');
 
 const PRIORITIES = new Set(['low', 'medium', 'high']);
 
@@ -100,14 +100,14 @@ const createNotification = async ({
   // Create notification in database
   const notification = await Notification.create(payload);
 
-  // Send Firebase Cloud Messaging push notification asynchronously (non-blocking)
+  // Send Firebase push notification asynchronously (non-blocking)
   setImmediate(async () => {
     try {
-      // Get user and their FCM token
+      // Get user and check if they have FCM token
       const recipientUser = await User.findById(targetId);
       
       if (recipientUser && recipientUser.fcmToken) {
-        // Send FCM push notification to the specific user
+        // Send push notification via Firebase
         await firebaseService.sendToDevice(recipientUser.fcmToken, {
           title: payload.title,
           body: payload.message,
@@ -115,17 +115,17 @@ const createNotification = async ({
             type: payload.type,
             priority: payload.priority,
             notificationId: notification._id.toString(),
-            actionUrl: actionUrl?.toString() || '',
+            actionUrl: actionUrl || '',
             metadata: JSON.stringify(metadata || {})
           }
         });
         
-        console.log(`✅ Firebase push notification sent to user ${targetId}: ${payload.title}`);
+        console.log(`✅ FCM push notification sent to user ${targetId}: ${payload.title}`);
       } else {
-        console.log(`ℹ️ User ${targetId} has no FCM token registered, skipping push notification`);
+        console.log(`ℹ️ User ${targetId} has no FCM token, notification saved to database only`);
       }
     } catch (error) {
-      console.error(`❌ Failed to send Firebase push notification for user ${targetId}:`, error.message);
+      console.error(`❌ Failed to send FCM push notification for user ${targetId}:`, error.message);
       // Don't throw error - notification in DB is created successfully
     }
   });
@@ -147,7 +147,7 @@ const sendSafeNotification = async (payload = {}) => {
 };
 
 /**
- * Send push notification to multiple users with Firebase
+ * Send push notification to multiple users via Firebase
  * @param {Array} userIds - Array of user IDs
  * @param {Object} options - Notification options {title, message, data, etc}
  */
@@ -166,39 +166,24 @@ const sendBulkPushNotification = async (userIds = [], options = {}) => {
       return;
     }
 
-    // Extract FCM tokens
-    const fcmTokens = users.map(user => user.fcmToken).filter(token => token);
+    const fcmTokens = users.map(user => user.fcmToken);
 
-    // Send push notifications via Firebase
-    if (fcmTokens.length > 0) {
-      // Convert all data values to strings for Firebase
-      const firebaseData = {
-        type: (options.type || 'system').toString(),
-        priority: (options.priority || 'medium').toString(),
-        notificationId: options.notificationId?.toString() || '',
-        actionUrl: (options.actionUrl || '').toString()
-      };
-      
-      // Add additional data fields as strings
-      if (options.data) {
-        Object.keys(options.data).forEach(key => {
-          const value = options.data[key];
-          if (value !== null && value !== undefined) {
-            firebaseData[key] = typeof value === 'object' ? JSON.stringify(value) : value.toString();
-          }
-        });
+    // Send push notifications to all users via Firebase
+    await firebaseService.sendToDevices(fcmTokens, {
+      title: options.title || 'Notification',
+      body: options.message || 'You have a new notification',
+      data: {
+        type: options.data?.type || 'notification',
+        priority: options.data?.priority || 'medium',
+        notificationId: options.notificationId || '',
+        actionUrl: options.data?.actionUrl || '',
+        metadata: JSON.stringify(options.data || {})
       }
-
-      await firebaseService.sendToDevices(fcmTokens, {
-        title: options.title || 'Notification',
-        body: options.message || 'You have a new notification',
-        data: firebaseData
-      });
-      
-      console.log(`✅ Firebase push notifications sent to ${fcmTokens.length} devices`);
-    }
+    });
+    
+    console.log(`✅ FCM push notifications sent to ${users.length} users`);
   } catch (error) {
-    console.error('Failed to send bulk Firebase push notifications:', error.message);
+    console.error('Failed to send bulk FCM push notifications:', error.message);
   }
 };
 

@@ -374,3 +374,50 @@ exports.getUserOneSignalStatus = catchAsync(async (req, res, next) => {
     }
   });
 });
+
+/**
+ * Send push notification to specific users (no permission required - for user-to-user messaging)
+ */
+exports.sendPushNotificationToUsers = catchAsync(async (req, res, next) => {
+  const {
+    title,
+    message,
+    userIds = [],
+    data = {}
+  } = req.body;
+
+  if (!title || !message) {
+    return next(new AppError('Title and message are required', 400));
+  }
+
+  if (!userIds || userIds.length === 0) {
+    return next(new AppError('At least one user ID is required', 400));
+  }
+
+  try {
+    // Send via OneSignal
+    let onesignalResult = { success: false };
+    if (onesignalService.isReady()) {
+      onesignalResult = await onesignalService.sendNotification({
+        title,
+        message,
+        users: userIds,
+        segments: [],
+        data,
+        priority: 10 // high priority
+      });
+    }
+
+    res.status(200).json({
+      status: 'success',
+      message: 'Push notification sent successfully',
+      data: {
+        onesignalResult: onesignalResult.success ? onesignalResult.notificationId : null,
+        targetedUsers: userIds.length
+      }
+    });
+  } catch (error) {
+    console.error('Error sending push notification:', error);
+    return next(new AppError('Failed to send push notification', 500));
+  }
+});

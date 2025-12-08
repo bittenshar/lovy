@@ -317,7 +317,7 @@ const buildApplicationPresenter = (applicationDoc, options = {}) => {
     hiredAt: application?.hiredAt || null,
     rejectedAt: application?.rejectedAt || null,
     withdrawnAt: application?.withdrawnAt || null,
-    jobId: toStringId(job?._id),
+    jobId: toStringId(job?._id) || toStringId(application?.job),
     workerId: toStringId(application?.worker),
     detailItems,
     detailText,

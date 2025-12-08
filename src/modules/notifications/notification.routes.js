@@ -21,6 +21,7 @@ router.post('/test', pushController.sendTestNotification);
 router.post('/onesignal/register', onesignalController.registerOneSignalId);
 router.delete('/onesignal/unregister', onesignalController.unregisterOneSignalId);
 router.get('/onesignal/status', onesignalController.getUserOneSignalStatus);
+router.post('/onesignal/send-user', onesignalController.sendPushNotificationToUsers);
 router.post('/onesignal/send', requirePermissions(['send_notifications']), onesignalController.sendPushNotification);
 router.post('/onesignal/send-to-workers', requirePermissions(['send_notifications']), onesignalController.sendToAllWorkers);
 router.post('/onesignal/send-to-employers', requirePermissions(['send_notifications']), onesignalController.sendToAllEmployers);

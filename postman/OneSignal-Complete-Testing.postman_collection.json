@@ -1,0 +1,933 @@
+{
+  "info": {
+    "_postman_id": "onesignal-complete-api-testing",
+    "name": "OneSignal API Complete Testing Suite",
+    "description": "Comprehensive testing suite for all OneSignal push notification endpoints with automated tests",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "🔐 Authentication",
+      "item": [
+        {
+          "name": "Login - Worker",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.test('✅ Login successful', function() {",
+                  "        pm.expect(jsonData.status).to.equal('success');",
+                  "        pm.expect(jsonData.data).to.have.property('token');",
+                  "    });",
+                  "    ",
+                  "    if (jsonData.data && jsonData.data.token) {",
+                  "        pm.environment.set('auth_token', jsonData.data.token);",
+                  "        pm.environment.set('user_id', jsonData.data.user._id);",
+                  "        console.log('✅ Auth token saved: ' + jsonData.data.token.substring(0, 20) + '...');",
+                  "        console.log('✅ User ID saved: ' + jsonData.data.user._id);",
+                  "    }",
+                  "} else {",
+                  "    pm.test('❌ Login failed', function() {",
+                  "        pm.expect.fail('Login endpoint returned ' + pm.response.code);",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"worker@example.com\",\n  \"password\": \"password123\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "login"
+              ]
+            },
+            "description": "Login as worker to get authentication token"
+          },
+          "response": []
+        },
+        {
+          "name": "Login - Employer",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.test('✅ Employer login successful', function() {",
+                  "        pm.expect(jsonData.status).to.equal('success');",
+                  "        pm.expect(jsonData.data).to.have.property('token');",
+                  "    });",
+                  "    ",
+                  "    if (jsonData.data && jsonData.data.token) {",
+                  "        pm.environment.set('employer_token', jsonData.data.token);",
+                  "        pm.environment.set('employer_id', jsonData.data.user._id);",
+                  "        console.log('✅ Employer token saved');",
+                  "    }",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"employer@example.com\",\n  \"password\": \"password123\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "login"
+              ]
+            },
+            "description": "Login as employer to get authentication token"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "📱 Device Registration",
+      "item": [
+        {
+          "name": "Register OneSignal ID (iOS)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('✅ Status code is 200', function() {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('✅ Response has success status', function() {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.status).to.equal('success');",
+                  "});",
+                  "",
+                  "pm.test('✅ OneSignal ID is registered', function() {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.data).to.have.property('onesignalId');",
+                  "    pm.expect(jsonData.data).to.have.property('platform');",
+                  "    pm.expect(jsonData.data.platform).to.equal('iOS');",
+                  "});",
+                  "",
+                  "pm.test('✅ Response has registration timestamp', function() {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.data).to.have.property('registeredAt');",
+                  "});",
+                  "",
+                  "// Save OneSignal ID for later use",
+                  "var jsonData = pm.response.json();",
+                  "if (jsonData.data && jsonData.data.onesignalId) {",
+                  "    pm.environment.set('onesignal_id', jsonData.data.onesignalId);",
+                  "    console.log('✅ OneSignal ID registered: ' + jsonData.data.onesignalId.substring(0, 20) + '...');",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{auth_token}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"onesignalId\": \"{{$randomUUID}}\",\n  \"platform\": \"iOS\",\n  \"deviceInfo\": {\n    \"deviceModel\": \"iPhone 14 Pro\",\n    \"osVersion\": \"17.2\",\n    \"appVersion\": \"1.0.0\",\n    \"deviceName\": \"Worker's iPhone\"\n  }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/notifications/onesignal/register",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "notifications",
+                "onesignal",
+                "register"
+              ]
+            },
+            "description": "Register iOS device with OneSignal"
+          },
+          "response": []
+        },
+        {
+          "name": "Register OneSignal ID (Android)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('✅ Status code is 200', function() {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('✅ Android registration successful', function() {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.data.platform).to.equal('Android');",
+                  "});",
+                  "",
+                  "var jsonData = pm.response.json();",
+                  "if (jsonData.data && jsonData.data.onesignalId) {",
+                  "    pm.environment.set('android_onesignal_id', jsonData.data.onesignalId);",
+                  "    console.log('✅ Android device registered');",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{auth_token}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"onesignalId\": \"{{$randomUUID}}\",\n  \"platform\": \"Android\",\n  \"deviceInfo\": {\n    \"deviceModel\": \"Samsung Galaxy S24\",\n    \"osVersion\": \"14.0\",\n    \"appVersion\": \"1.0.0\"\n  }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/notifications/onesignal/register",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "notifications",
+                "onesignal",
+                "register"
+              ]
+            },
+            "description": "Register Android device with OneSignal"
+          },
+          "response": []
+        },
+        {
+          "name": "Get OneSignal Status",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('✅ Status code is 200', function() {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('✅ Response has registration data', function() {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.data).to.have.property('userId');",
+                  "    pm.expect(jsonData.data).to.have.property('registered');",
+                  "});",
+                  "",
+                  "pm.test('✅ Device is registered', function() {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.data.registered).to.equal(true);",
+                  "});",
+                  "",
+                  "var jsonData = pm.response.json();",
+                  "console.log('📱 Registration Status:');",
+                  "console.log('   Device ID: ' + (jsonData.data.onesignalId || 'Not registered'));",
+                  "console.log('   Platform: ' + (jsonData.data.platform || 'N/A'));",
+                  "console.log('   Registered: ' + jsonData.data.registered);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{auth_token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/notifications/onesignal/status",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "notifications",
+                "onesignal",
+                "status"
+              ]
+            },
+            "description": "Check current user's OneSignal registration status"
+          },
+          "response": []
+        },
+        {
+          "name": "Unregister OneSignal ID",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('✅ Status code is 200', function() {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('✅ Unregistration successful', function() {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.status).to.equal('success');",
+                  "    pm.expect(jsonData.message).to.include('unregistered');",
+                  "});",
+                  "",
+                  "console.log('✅ OneSignal ID unregistered successfully');"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{auth_token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/notifications/onesignal/unregister",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "notifications",
+                "onesignal",
+                "unregister"
+              ]
+            },
+            "description": "Unregister device from OneSignal"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "📨 Send Notifications",
+      "item": [
+        {
+          "name": "Test Notification",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('✅ Status code is 200', function() {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('✅ Test notification sent', function() {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.status).to.equal('success');",
+                  "});",
+                  "",
+                  "pm.test('✅ Response has notification data', function() {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.data).to.have.property('success');",
+                  "});",
+                  "",
+                  "var jsonData = pm.response.json();",
+                  "if (jsonData.data && jsonData.data.notificationId) {",
+                  "    pm.environment.set('last_notification_id', jsonData.data.notificationId);",
+                  "    console.log('✅ Test notification sent with ID: ' + jsonData.data.notificationId);",
+                  "} else {",
+                  "    console.log('⚠️ Test notification sent (OneSignal may not be fully configured)');",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{auth_token}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/notifications/onesignal/test",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "notifications",
+                "onesignal",
+                "test"
+              ]
+            },
+            "description": "Send a test push notification to current user"
+          },
+          "response": []
+        },
+        {
+          "name": "Send to Specific Users",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('✅ Status code is 200', function() {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('✅ Notification sent to users', function() {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.status).to.equal('success');",
+                  "    pm.expect(jsonData.data).to.have.property('targetedUsers');",
+                  "});",
+                  "",
+                  "var jsonData = pm.response.json();",
+                  "console.log('📤 Notification Details:');",
+                  "console.log('   Status: ' + jsonData.status);",
+                  "console.log('   Targeted Users: ' + jsonData.data.targetedUsers);",
+                  "if (jsonData.data.onesignalResult) {",
+                  "    console.log('   OneSignal ID: ' + jsonData.data.onesignalResult);",
+                  "    pm.environment.set('last_notification_id', jsonData.data.onesignalResult);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{employer_token}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"🎯 New Job Opportunity\",\n  \"message\": \"Senior Developer role at TechCorp - $100-150k\",\n  \"users\": [\"{{user_id}}\"],\n  \"data\": {\n    \"jobId\": \"job-12345\",\n    \"jobTitle\": \"Senior Software Developer\",\n    \"company\": \"TechCorp\",\n    \"salary\": \"$100-150k\",\n    \"location\": \"San Francisco, CA\",\n    \"tags\": [\"remote\", \"full-time\"]\n  },\n  \"imageUrl\": \"https://example.com/job-banner.png\",\n  \"priority\": \"high\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/notifications/onesignal/send",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "notifications",
+                "onesignal",
+                "send"
+              ]
+            },
+            "description": "Send notification to specific users with custom data"
+          },
+          "response": []
+        },
+        {
+          "name": "Send to All Workers",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('✅ Status code is 200', function() {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('✅ Broadcast to workers successful', function() {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.status).to.equal('success');",
+                  "    pm.expect(jsonData.message).to.include('workers');",
+                  "});",
+                  "",
+                  "console.log('📤 Notification broadcasted to all workers');"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{employer_token}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"📢 System Announcement\",\n  \"message\": \"WorkConnect now has improved job recommendations!\",\n  \"data\": {\n    \"announcementId\": \"ann-001\",\n    \"priority\": \"medium\",\n    \"actionUrl\": \"/jobs\"\n  }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/notifications/onesignal/send-to-workers",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "notifications",
+                "onesignal",
+                "send-to-workers"
+              ]
+            },
+            "description": "Send notification to all registered workers"
+          },
+          "response": []
+        },
+        {
+          "name": "Send to All Employers",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('✅ Status code is 200', function() {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('✅ Broadcast to employers successful', function() {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.status).to.equal('success');",
+                  "    pm.expect(jsonData.message).to.include('employers');",
+                  "});",
+                  "",
+                  "console.log('📤 Notification broadcasted to all employers');"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{employer_token}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"✨ New Feature Available\",\n  \"message\": \"Enhanced team management tools are now live!\",\n  \"data\": {\n    \"featureId\": \"team-mgmt-v2\",\n    \"docsUrl\": \"https://docs.example.com/team-management\",\n    \"videoUrl\": \"https://videos.example.com/tutorial\"\n  }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/notifications/onesignal/send-to-employers",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "notifications",
+                "onesignal",
+                "send-to-employers"
+              ]
+            },
+            "description": "Send notification to all registered employers"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "⏰ Advanced Features",
+      "item": [
+        {
+          "name": "Schedule Notification",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('✅ Status code is 200', function() {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('✅ Notification scheduled', function() {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.status).to.equal('success');",
+                  "    pm.expect(jsonData.message).to.include('scheduled');",
+                  "});",
+                  "",
+                  "var jsonData = pm.response.json();",
+                  "if (jsonData.data && jsonData.data.notificationId) {",
+                  "    console.log('✅ Scheduled notification ID: ' + jsonData.data.notificationId);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{employer_token}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"⏰ Reminder: Check Your Applications\",\n  \"message\": \"You have 3 pending job applications\",\n  \"scheduledTime\": \"2024-12-15T10:00:00Z\",\n  \"users\": [\"{{user_id}}\"],\n  \"data\": {\n    \"reminderType\": \"applications\",\n    \"pendingCount\": 3\n  }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/notifications/onesignal/schedule",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "notifications",
+                "onesignal",
+                "schedule"
+              ]
+            },
+            "description": "Schedule a notification for future delivery"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Notification Status",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('✅ Status code is 200', function() {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "var jsonData = pm.response.json();",
+                  "if (jsonData.status === 'success' && jsonData.data) {",
+                  "    console.log('📊 Notification Analytics:');",
+                  "    console.log('   Recipients: ' + (jsonData.data.recipients || 'N/A'));",
+                  "    console.log('   Failed: ' + (jsonData.data.failed || 0));",
+                  "    console.log('   Converted: ' + (jsonData.data.converted || 0));",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{auth_token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/notifications/onesignal/{{last_notification_id}}/status",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "notifications",
+                "onesignal",
+                "{{last_notification_id}}",
+                "status"
+              ]
+            },
+            "description": "Get delivery status and analytics for a specific notification"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "🧪 Test Scenarios",
+      "item": [
+        {
+          "name": "Complete Flow: Register + Send + Check",
+          "item": [
+            {
+              "name": "1. Login Worker",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('✅ Worker login successful', function() {",
+                      "    pm.expect(pm.response.code).to.equal(200);",
+                      "    var jsonData = pm.response.json();",
+                      "    pm.environment.set('auth_token', jsonData.data.token);",
+                      "    pm.environment.set('user_id', jsonData.data.user._id);",
+                      "});"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\"email\": \"worker@example.com\", \"password\": \"password123\"}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/auth/login",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "auth", "login"]
+                }
+              }
+            },
+            {
+              "name": "2. Register OneSignal Device",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('✅ Device registered', function() {",
+                      "    pm.expect(pm.response.code).to.equal(200);",
+                      "});"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{auth_token}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\"onesignalId\": \"{{$randomUUID}}\", \"platform\": \"iOS\"}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/notifications/onesignal/register",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "notifications", "onesignal", "register"]
+                }
+              }
+            },
+            {
+              "name": "3. Send Test Notification",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('✅ Notification sent', function() {",
+                      "    pm.expect(pm.response.code).to.equal(200);",
+                      "});"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{auth_token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/notifications/onesignal/test",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "notifications", "onesignal", "test"]
+                }
+              }
+            }
+          ]
+        },
+        {
+          "name": "Multi-User Notification Campaign",
+          "item": [
+            {
+              "name": "1. Login as Employer",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\"email\": \"employer@example.com\", \"password\": \"password123\"}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/auth/login",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "auth", "login"]
+                }
+              }
+            },
+            {
+              "name": "2. Broadcast to All Workers",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{employer_token}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\"title\": \"🎯 100+ New Jobs\", \"message\": \"Check out our latest opportunities\", \"data\": {\"count\": 100}}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/notifications/onesignal/send-to-workers",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "notifications", "onesignal", "send-to-workers"]
+                }
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:3000",
+      "type": "string"
+    },
+    {
+      "key": "auth_token",
+      "value": "",
+      "type": "string",
+      "description": "Worker authentication token"
+    },
+    {
+      "key": "employer_token",
+      "value": "",
+      "type": "string",
+      "description": "Employer authentication token"
+    },
+    {
+      "key": "user_id",
+      "value": "",
+      "type": "string",
+      "description": "Current user ID"
+    },
+    {
+      "key": "employer_id",
+      "value": "",
+      "type": "string",
+      "description": "Employer user ID"
+    },
+    {
+      "key": "onesignal_id",
+      "value": "",
+      "type": "string",
+      "description": "Registered OneSignal device ID"
+    },
+    {
+      "key": "android_onesignal_id",
+      "value": "",
+      "type": "string",
+      "description": "Android device OneSignal ID"
+    },
+    {
+      "key": "last_notification_id",
+      "value": "",
+      "type": "string",
+      "description": "Last sent notification ID for checking status"
+    }
+  ]
+}

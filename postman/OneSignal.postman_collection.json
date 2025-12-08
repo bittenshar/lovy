@@ -1,0 +1,407 @@
+{
+  "info": {
+    "_postman_id": "onesignal-push-notifications",
+    "name": "OneSignal Push Notifications",
+    "description": "Complete OneSignal push notification testing collection",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "OneSignal Registration",
+      "item": [
+        {
+          "name": "Register OneSignal ID",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{auth_token}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"onesignalId\": \"onesignal-device-id-from-sdk\",\n  \"platform\": \"iOS\",\n  \"deviceInfo\": {\n    \"deviceModel\": \"iPhone 14\",\n    \"osVersion\": \"16.5\",\n    \"appVersion\": \"1.0.0\",\n    \"deviceName\": \"John's iPhone\"\n  }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/notifications/onesignal/register",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "notifications",
+                "onesignal",
+                "register"
+              ]
+            },
+            "description": "Register a user's device with OneSignal"
+          },
+          "response": []
+        },
+        {
+          "name": "Get OneSignal Status",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{auth_token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/notifications/onesignal/status",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "notifications",
+                "onesignal",
+                "status"
+              ]
+            },
+            "description": "Get current user's OneSignal registration status"
+          },
+          "response": []
+        },
+        {
+          "name": "Unregister OneSignal ID",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{auth_token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/notifications/onesignal/unregister",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "notifications",
+                "onesignal",
+                "unregister"
+              ]
+            },
+            "description": "Unregister device from OneSignal"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Send Notifications",
+      "item": [
+        {
+          "name": "Send to Specific Users",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{auth_token}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Job Alert 🎯\",\n  \"message\": \"New job matching your profile available in your area\",\n  \"users\": [\n    \"user-id-1\",\n    \"user-id-2\"\n  ],\n  \"data\": {\n    \"jobId\": \"job-123\",\n    \"jobTitle\": \"Software Developer\",\n    \"company\": \"Tech Startup\",\n    \"salary\": \"$80k-$120k\",\n    \"location\": \"San Francisco, CA\"\n  },\n  \"imageUrl\": \"https://example.com/job-banner.png\",\n  \"priority\": \"high\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/notifications/onesignal/send",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "notifications",
+                "onesignal",
+                "send"
+              ]
+            },
+            "description": "Send notification to specific users"
+          },
+          "response": []
+        },
+        {
+          "name": "Send to All Workers",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{auth_token}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"System Update 🔄\",\n  \"message\": \"WorkConnect app has been updated with new features\",\n  \"data\": {\n    \"updateVersion\": \"2.1.0\",\n    \"updateRequired\": false,\n    \"features\": [\"Better job recommendations\", \"Improved chat\"]\n  }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/notifications/onesignal/send-to-workers",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "notifications",
+                "onesignal",
+                "send-to-workers"
+              ]
+            },
+            "description": "Send notification to all workers"
+          },
+          "response": []
+        },
+        {
+          "name": "Send to All Employers",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{auth_token}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"New Feature: Team Management 👥\",\n  \"message\": \"Manage your team more efficiently with our new tools\",\n  \"data\": {\n    \"featureId\": \"team-mgmt-v2\",\n    \"docsUrl\": \"https://docs.example.com/team-management\",\n    \"videoUrl\": \"https://videos.example.com/team-tutorial\"\n  }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/notifications/onesignal/send-to-employers",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "notifications",
+                "onesignal",
+                "send-to-employers"
+              ]
+            },
+            "description": "Send notification to all employers"
+          },
+          "response": []
+        },
+        {
+          "name": "Send Test Notification",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{auth_token}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/notifications/onesignal/test",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "notifications",
+                "onesignal",
+                "test"
+              ]
+            },
+            "description": "Send test notification to current user"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Advanced Features",
+      "item": [
+        {
+          "name": "Schedule Notification",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{auth_token}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Scheduled Reminder ⏰\",\n  \"message\": \"Check your job applications\",\n  \"scheduledTime\": \"2024-12-15T10:00:00Z\",\n  \"users\": [\n    \"user-id-1\"\n  ],\n  \"data\": {\n    \"reminderType\": \"applications\",\n    \"pendingCount\": 3\n  }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/notifications/onesignal/schedule",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "notifications",
+                "onesignal",
+                "schedule"
+              ]
+            },
+            "description": "Schedule a notification for future delivery"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Notification Status",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{auth_token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/notifications/onesignal/{{notification_id}}/status",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "notifications",
+                "onesignal",
+                "{{notification_id}}",
+                "status"
+              ]
+            },
+            "description": "Get details about a sent notification"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Setup",
+      "item": [
+        {
+          "name": "Get Login Token (Worker)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"worker@example.com\",\n  \"password\": \"password123\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "login"
+              ]
+            },
+            "description": "Login as worker to get auth token"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Login Token (Employer)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"employer@example.com\",\n  \"password\": \"password123\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "login"
+              ]
+            },
+            "description": "Login as employer to get auth token"
+          },
+          "response": []
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:3000",
+      "type": "string"
+    },
+    {
+      "key": "auth_token",
+      "value": "",
+      "type": "string",
+      "description": "JWT authentication token - get from login endpoint"
+    },
+    {
+      "key": "notification_id",
+      "value": "",
+      "type": "string",
+      "description": "OneSignal notification ID from send response"
+    }
+  ]
+}

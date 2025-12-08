@@ -1,6 +1,8 @@
 const mongoose = require('mongoose');
 const Notification = require('./notification.model');
 const AppError = require('../../shared/utils/appError');
+const onesignalService = require('../../shared/services/onesignal.service');
+const User = require('../users/user.model');
 
 const PRIORITIES = new Set(['low', 'medium', 'high']);
 
@@ -95,7 +97,40 @@ const createNotification = async ({
     payload.actionUrl = actionUrl;
   }
 
-  return Notification.create(payload);
+  // Create notification in database
+  const notification = await Notification.create(payload);
+
+  // Send OneSignal push notification asynchronously (non-blocking)
+  setImmediate(async () => {
+    try {
+      // Get user and check if they have OneSignal ID
+      const recipientUser = await User.findById(targetId);
+      
+      if (recipientUser && recipientUser.onesignalId) {
+        // Send push notification to the specific user
+        await onesignalService.sendToUser(recipientUser.onesignalId, {
+          title: payload.title,
+          message: payload.message,
+          data: {
+            type: payload.type,
+            priority: payload.priority,
+            notificationId: notification._id.toString(),
+            actionUrl: actionUrl || null,
+            metadata: metadata || {}
+          }
+        });
+        
+        console.log(`✅ Push notification sent to user ${targetId}: ${payload.title}`);
+      } else {
+        console.log(`ℹ️ User ${targetId} has no OneSignal ID, skipping push notification`);
+      }
+    } catch (error) {
+      console.error(`❌ Failed to send push notification for user ${targetId}:`, error.message);
+      // Don't throw error - notification in DB is created successfully
+    }
+  });
+
+  return notification;
 };
 
 const sendSafeNotification = async (payload = {}) => {
@@ -111,7 +146,49 @@ const sendSafeNotification = async (payload = {}) => {
   }
 };
 
+/**
+ * Send push notification to multiple users
+ * @param {Array} userIds - Array of user IDs
+ * @param {Object} options - Notification options {title, message, data, etc}
+ */
+const sendBulkPushNotification = async (userIds = [], options = {}) => {
+  if (!Array.isArray(userIds) || userIds.length === 0) {
+    console.warn('No user IDs provided for bulk push notification');
+    return;
+  }
+
+  try {
+    // Get all users with OneSignal IDs
+    const users = await User.find({ _id: { $in: userIds }, onesignalId: { $exists: true, $ne: null } });
+    
+    if (users.length === 0) {
+      console.log('No users with OneSignal IDs found');
+      return;
+    }
+
+    // Send push notifications to all users
+    const pushPromises = users.map(user =>
+      onesignalService.sendToUser(user.onesignalId, {
+        title: options.title || 'Notification',
+        message: options.message || 'You have a new notification',
+        data: {
+          ...options.data,
+          notificationId: options.notificationId || null
+        }
+      }).catch(error => {
+        console.error(`Failed to send push to ${user._id}:`, error.message);
+      })
+    );
+
+    await Promise.all(pushPromises);
+    console.log(`✅ Push notifications sent to ${users.length} users`);
+  } catch (error) {
+    console.error('Failed to send bulk push notifications:', error.message);
+  }
+};
+
 module.exports = {
   createNotification,
-  sendSafeNotification
+  sendSafeNotification,
+  sendBulkPushNotification
 };

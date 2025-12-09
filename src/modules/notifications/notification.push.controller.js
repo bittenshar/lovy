@@ -11,17 +11,10 @@ exports.registerFCMToken = catchAsync(async (req, res, next) => {
 
   const trimmedToken = fcmToken.trim();
   
-  // Validate FCM token format
-  if (trimmedToken.length < 100) {
-    console.warn(`⚠️ WARNING: Received unusually short FCM token (${trimmedToken.length} chars)`);
-    console.warn(`   Token: ${trimmedToken.substring(0, 50)}...`);
-    return next(new AppError('Invalid FCM token format - token too short', 400));
-  }
-
-  if (!trimmedToken.includes(':') && !trimmedToken.includes('_')) {
-    console.warn(`⚠️ WARNING: FCM token missing expected separators (: or _)`);
-    return next(new AppError('Invalid FCM token format', 400));
-  }
+  console.log(`✅ FCM Token Received:`);
+  console.log(`   Length: ${trimmedToken.length} chars`);
+  console.log(`   Preview: ${trimmedToken.substring(0, 50)}...`);
+  console.log(`   Platform: ${platform || 'android'}`);
 
   // Update user's FCM token
   const user = await User.findByIdAndUpdate(
@@ -29,7 +22,7 @@ exports.registerFCMToken = catchAsync(async (req, res, next) => {
     {
       $set: {
         fcmToken: trimmedToken,
-        platform: platform || 'unknown',
+        platform: platform || 'android',
         fcmTokenUpdatedAt: new Date()
       }
     },
@@ -43,7 +36,7 @@ exports.registerFCMToken = catchAsync(async (req, res, next) => {
   console.log(`📱 FCM token registered for user ${user.email}`);
   console.log(`   Token length: ${trimmedToken.length}`);
   console.log(`   Token preview: ${trimmedToken.substring(0, 50)}...${trimmedToken.substring(trimmedToken.length - 20)}`);
-  console.log(`   Platform: ${platform || 'unknown'}`);
+  console.log(`   Platform: ${platform || 'android'}`);
 
   res.status(200).json({
     status: 'success',

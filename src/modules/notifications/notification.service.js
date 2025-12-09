@@ -107,25 +107,77 @@ const createNotification = async ({
       const recipientUser = await User.findById(targetId);
       
       if (recipientUser && recipientUser.fcmToken) {
-        // Send push notification via Firebase
-        await firebaseService.sendToDevice(recipientUser.fcmToken, {
-          title: payload.title,
-          body: payload.message,
-          data: {
-            type: payload.type,
-            priority: payload.priority,
-            notificationId: notification._id.toString(),
-            actionUrl: actionUrl || '',
-            metadata: JSON.stringify(metadata || {})
-          }
-        });
+        const fcmToken = recipientUser.fcmToken.trim();
         
-        console.log(`✅ FCM push notification sent to user ${targetId}: ${payload.title}`);
+        // Validate FCM token format (should be long string with : or _ separators)
+        const isValidFCMToken = fcmToken.length > 100 && 
+                                (fcmToken.includes(':') || fcmToken.includes('_'));
+        
+        // Skip Firebase push for test/mock tokens
+        if (fcmToken.startsWith('mock_') || 
+            fcmToken.startsWith('test_') ||
+            !isValidFCMToken) {
+          console.log(`ℹ️ Skipping invalid/test token for user ${targetId}`);
+          console.log(`   Token format: ${fcmToken.substring(0, 50)}...`);
+          console.log(`   Token length: ${fcmToken.length}`);
+          return;
+        }
+
+        // Serialize metadata safely - convert all values to strings
+        const safeMetadata = {};
+        if (metadata && typeof metadata === 'object') {
+          Object.keys(metadata).forEach(key => {
+            const value = metadata[key];
+            if (value === null || value === undefined) {
+              safeMetadata[key] = '';
+            } else if (typeof value === 'object') {
+              safeMetadata[key] = JSON.stringify(value);
+            } else {
+              safeMetadata[key] = String(value);
+            }
+          });
+        }
+
+        // Log token details for debugging
+        console.log(`📤 Attempting to send FCM notification to user ${targetId}`);
+        console.log(`   Token preview: ${fcmToken.substring(0, 50)}...${fcmToken.substring(fcmToken.length - 20)}`);
+
+        // Send push notification via Firebase
+        try {
+          await firebaseService.sendToDevice(fcmToken, {
+            title: payload.title,
+            body: payload.message,
+            data: {
+              type: String(payload.type),
+              priority: String(payload.priority),
+              notificationId: notification._id.toString(),
+              actionUrl: String(actionUrl || ''),
+              metadata: JSON.stringify(safeMetadata)
+            }
+          });
+          
+          console.log(`✅ FCM push notification sent to user ${targetId}: ${payload.title}`);
+        } catch (firebaseError) {
+          console.error(`❌ Firebase error for user ${targetId}:`);
+          console.error(`   Error: ${firebaseError.message}`);
+          console.error(`   Code: ${firebaseError.code}`);
+          
+          // If token is invalid, clear it from user so we don't keep trying
+          if (firebaseError.message.includes('Requested entity was not found') ||
+              firebaseError.message.includes('Invalid registration token') ||
+              firebaseError.code === 'messaging/invalid-registration-token') {
+            console.warn(`⚠️ Clearing invalid FCM token for user ${targetId}`);
+            await User.findByIdAndUpdate(targetId, {
+              $unset: { fcmToken: 1, platform: 1, fcmTokenUpdatedAt: 1 }
+            });
+          }
+          // Don't re-throw - notification is already successfully stored in DB
+        }
       } else {
         console.log(`ℹ️ User ${targetId} has no FCM token, notification saved to database only`);
       }
     } catch (error) {
-      console.error(`❌ Failed to send FCM push notification for user ${targetId}:`, error.message);
+      console.error(`❌ Unexpected error in notification async handler:`, error.message);
       // Don't throw error - notification in DB is created successfully
     }
   });
@@ -168,17 +220,32 @@ const sendBulkPushNotification = async (userIds = [], options = {}) => {
 
     const fcmTokens = users.map(user => user.fcmToken);
 
+    // Serialize data safely - all Firebase data fields must be strings
+    const safeData = {
+      type: String(options.data?.type || 'notification'),
+      priority: String(options.data?.priority || 'medium'),
+      notificationId: String(options.notificationId || ''),
+      actionUrl: String(options.data?.actionUrl || '')
+    };
+
+    // Safely serialize metadata
+    if (options.data?.metadata) {
+      try {
+        safeData.metadata = typeof options.data.metadata === 'string' 
+          ? options.data.metadata 
+          : JSON.stringify(options.data.metadata);
+      } catch (err) {
+        safeData.metadata = '{}';
+      }
+    } else {
+      safeData.metadata = '{}';
+    }
+
     // Send push notifications to all users via Firebase
     await firebaseService.sendToDevices(fcmTokens, {
       title: options.title || 'Notification',
       body: options.message || 'You have a new notification',
-      data: {
-        type: options.data?.type || 'notification',
-        priority: options.data?.priority || 'medium',
-        notificationId: options.notificationId || '',
-        actionUrl: options.data?.actionUrl || '',
-        metadata: JSON.stringify(options.data || {})
-      }
+      data: safeData
     });
     
     console.log(`✅ FCM push notifications sent to ${users.length} users`);

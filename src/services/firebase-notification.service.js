@@ -55,13 +55,32 @@ class FirebaseNotificationService {
     }
 
     try {
+      // Validate FCM token format
+      if (!fcmToken || typeof fcmToken !== 'string' || fcmToken.trim().length === 0) {
+        console.warn('⚠️ Invalid or empty FCM token provided');
+        throw new Error('Invalid FCM token');
+      }
+
+      // Ensure all data values are strings (Firebase requirement)
+      const cleanData = {};
+      if (payload.data && typeof payload.data === 'object') {
+        Object.keys(payload.data).forEach(key => {
+          const value = payload.data[key];
+          if (value === null || value === undefined) {
+            cleanData[key] = '';
+          } else {
+            cleanData[key] = String(value);
+          }
+        });
+      }
+
       const message = {
         notification: {
-          title: payload.title || 'Notification',
-          body: payload.body || '',
+          title: String(payload.title || 'Notification'),
+          body: String(payload.body || ''),
         },
-        data: payload.data || {},
-        token: fcmToken,
+        data: cleanData,
+        token: fcmToken.trim(),
         android: {
           priority: 'high',
           notification: {
@@ -73,8 +92,8 @@ class FirebaseNotificationService {
           payload: {
             aps: {
               alert: {
-                title: payload.title,
-                body: payload.body,
+                title: String(payload.title || 'Notification'),
+                body: String(payload.body || ''),
               },
               sound: 'default',
               'mutable-content': true,
@@ -83,11 +102,28 @@ class FirebaseNotificationService {
         },
       };
 
+      // Log the message structure for debugging
+      console.log('📤 Sending Firebase message with data keys:', Object.keys(cleanData));
+      console.log(`   To token: ${fcmToken.substring(0, 40)}...${fcmToken.substring(fcmToken.length - 20)}`);
+
       const response = await admin.messaging().send(message);
       console.log('✅ Notification sent successfully:', response);
       return response;
     } catch (error) {
       console.error('❌ Error sending notification:', error.message);
+      console.error(`   Error Code: ${error.code}`);
+      console.error(`   Token: ${fcmToken.substring(0, 40)}...`);
+      
+      // Categorize the error
+      if (error.code === 'messaging/mismatched-credential') {
+        console.warn('⚠️  Firebase token mismatch (likely from different Firebase project)');
+      } else if (error.code === 'messaging/invalid-registration-token' || 
+                 error.message.includes('Requested entity was not found')) {
+        console.warn('⚠️  Invalid or expired FCM token - token should be cleared and regenerated');
+      } else if (error.message.includes('not initialized')) {
+        console.error('🔴 CRITICAL: Firebase Admin SDK not initialized - check firebase-service-account.json');
+      }
+      
       throw error;
     }
   }
@@ -104,12 +140,25 @@ class FirebaseNotificationService {
     }
 
     try {
+      // Ensure all data values are strings (Firebase requirement)
+      const cleanData = {};
+      if (payload.data && typeof payload.data === 'object') {
+        Object.keys(payload.data).forEach(key => {
+          const value = payload.data[key];
+          if (value === null || value === undefined) {
+            cleanData[key] = '';
+          } else {
+            cleanData[key] = String(value);
+          }
+        });
+      }
+
       const messages = fcmTokens.map(token => ({
         notification: {
-          title: payload.title || 'Notification',
-          body: payload.body || '',
+          title: String(payload.title || 'Notification'),
+          body: String(payload.body || ''),
         },
-        data: payload.data || {},
+        data: cleanData,
         token,
         android: {
           priority: 'high',
@@ -122,8 +171,8 @@ class FirebaseNotificationService {
           payload: {
             aps: {
               alert: {
-                title: payload.title,
-                body: payload.body,
+                title: String(payload.title || 'Notification'),
+                body: String(payload.body || ''),
               },
               sound: 'default',
               'mutable-content': true,

@@ -5,6 +5,7 @@
 
 const admin = require('firebase-admin');
 const path = require('path');
+const FCMDebugLogger = require('../utils/fcm-debug-logger');
 
 class FirebaseNotificationService {
   constructor() {
@@ -17,10 +18,13 @@ class FirebaseNotificationService {
    */
   init() {
     try {
+      FCMDebugLogger.logInit('Firebase Admin SDK');
+
       // Check if already initialized
       if (admin.apps.length > 0) {
         this.initialized = true;
         console.log('✅ Firebase Admin SDK already initialized');
+        FCMDebugLogger.logInitComplete();
         return;
       }
 
@@ -34,7 +38,11 @@ class FirebaseNotificationService {
 
       this.initialized = true;
       console.log('✅ Firebase Admin SDK initialized successfully');
+      FCMDebugLogger.logInitComplete();
     } catch (error) {
+      FCMDebugLogger.logError('firebase-init', error, {
+        serviceAccountPath: process.env.FIREBASE_SERVICE_ACCOUNT_PATH || 'default'
+      });
       console.error('❌ Firebase initialization error:', error.message);
       console.log('⚠️  Firebase notifications will be unavailable. Make sure to:');
       console.log('   1. Download firebase-service-account.json from Firebase Console');
@@ -60,6 +68,8 @@ class FirebaseNotificationService {
         console.warn('⚠️ Invalid or empty FCM token provided');
         throw new Error('Invalid FCM token');
       }
+
+      FCMDebugLogger.logTokenValidation(fcmToken, true);
 
       // Ensure all data values are strings (Firebase requirement)
       const cleanData = {};
@@ -103,16 +113,18 @@ class FirebaseNotificationService {
       };
 
       // Log the message structure for debugging
-      console.log('📤 Sending Firebase message with data keys:', Object.keys(cleanData));
-      console.log(`   To token: ${fcmToken.substring(0, 40)}...${fcmToken.substring(fcmToken.length - 20)}`);
+      FCMDebugLogger.logNotificationSend(
+        payload.title,
+        payload.body,
+        1,
+        [fcmToken]
+      );
 
       const response = await admin.messaging().send(message);
-      console.log('✅ Notification sent successfully:', response);
+      FCMDebugLogger.logNotificationSuccess(response, 1, 0);
       return response;
     } catch (error) {
-      console.error('❌ Error sending notification:', error.message);
-      console.error(`   Error Code: ${error.code}`);
-      console.error(`   Token: ${fcmToken.substring(0, 40)}...`);
+      FCMDebugLogger.logNotificationError(error, fcmToken);
       
       // Categorize the error
       if (error.code === 'messaging/mismatched-credential') {

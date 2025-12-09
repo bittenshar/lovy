@@ -43,4 +43,22 @@ router.post('/subscribe', notificationController.subscribeToTopic);
  */
 router.post('/unsubscribe', notificationController.unsubscribeFromTopic);
 
+/**
+ * Register FCM token for user device
+ * POST /api/notifications/register-token
+ */
+router.post('/register-token', notificationController.registerFCMToken);
+
+/**
+ * Get registered tokens for user
+ * GET /api/notifications/tokens
+ */
+router.get('/tokens', notificationController.getUserTokens);
+
+/**
+ * Remove FCM token
+ * DELETE /api/notifications/register-token
+ */
+router.delete('/register-token', notificationController.unregisterFCMToken);
+
 module.exports = router;

@@ -409,14 +409,6 @@ exports.createJob = catchAsync(async (req, res, next) => {
 
   const dto = await buildJobResponse(job, req.user);
   
-  // Send Firebase notifications to all workers about the new job
-  if (job.isPublished) {
-    setImmediate(() => {
-      notificationTriggers.notifyNewJobPosted(job, req.user)
-        .catch(err => console.error('Failed to send job posted notifications:', err.message));
-    });
-  }
-  
   res.status(201).json({ status: 'success', data: dto });
 });
 

@@ -1,0 +1,135 @@
+{
+  "info": {
+    "name": "Admin Token Management",
+    "description": "Create and manage static admin tokens that never expire",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Create Admin User",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"admin@workconnect.com\",\n  \"password\": \"secure_admin_password_123\",\n  \"name\": \"System Administrator\"\n}"
+        },
+        "url": {
+          "raw": "http://localhost:3000/api/admin/create",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "3000",
+          "path": ["api", "admin", "create"]
+        },
+        "description": "Create a new admin user (one-time setup)"
+      },
+      "response": []
+    },
+    {
+      "name": "Generate Static Admin Token",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"adminEmail\": \"admin@workconnect.com\"\n}"
+        },
+        "url": {
+          "raw": "http://localhost:3000/api/admin/generate-static-token",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "3000",
+          "path": ["api", "admin", "generate-static-token"]
+        },
+        "description": "Generate a static token that never expires. Save this token securely!"
+      },
+      "response": []
+    },
+    {
+      "name": "List All Admin Tokens",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:3000/api/admin/tokens",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "3000",
+          "path": ["api", "admin", "tokens"]
+        },
+        "description": "List all generated admin tokens with creation dates"
+      },
+      "response": []
+    },
+    {
+      "name": "Revoke Admin Token",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"token\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...\"\n}"
+        },
+        "url": {
+          "raw": "http://localhost:3000/api/admin/revoke-token",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "3000",
+          "path": ["api", "admin", "revoke-token"]
+        },
+        "description": "Revoke a static admin token (make it invalid)"
+      },
+      "response": []
+    },
+    {
+      "name": "Health Check with Admin Token",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{adminToken}}"
+          }
+        ],
+        "url": {
+          "raw": "http://localhost:3000/health",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "3000",
+          "path": ["health"]
+        },
+        "description": "Test your admin token by checking health endpoint"
+      },
+      "response": []
+    }
+  ],
+  "variable": [
+    {
+      "key": "adminToken",
+      "value": "PASTE_YOUR_STATIC_ADMIN_TOKEN_HERE",
+      "type": "string",
+      "description": "Your static admin token (never expires)"
+    },
+    {
+      "key": "adminEmail",
+      "value": "admin@workconnect.com",
+      "type": "string",
+      "description": "Admin user email"
+    }
+  ]
+}

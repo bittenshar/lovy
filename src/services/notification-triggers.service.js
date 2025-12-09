@@ -4,7 +4,6 @@
  */
 
 const { createNotification, sendBulkPushNotification } = require('../modules/notifications/notification.service');
-const firebaseService = require('./firebase-notification.service');
 const User = require('../modules/users/user.model');
 
 /**

@@ -12,11 +12,11 @@ const shiftRoutes = require('../modules/shifts/shift.routes');
 const shiftController = require('../modules/shifts/shift.controller');
 const { protect: protectAuth } = require('../shared/middlewares/auth.middleware');
 const notificationRoutes = require('../modules/notifications/notification.routes');
-const fcmRoutes = require('../routes/notification.routes'); // Firebase Cloud Messaging routes
 const conversationRoutes = require('../modules/conversations/conversation.routes');
 const budgetRoutes = require('../modules/budgets/budget.routes');
 const paymentRoutes = require('../modules/payments/payment.routes');
 const subscriptionRoutes = require('../modules/subscriptions/subscription.routes');
+const adminTokenRoutes = require('./admin-token.routes');
 
 const router = express.Router();
 const shiftsRouter = express.Router();
@@ -28,6 +28,7 @@ shiftsRouter.post('/swaps', shiftController.requestSwap);
 shiftsRouter.patch('/swaps/:swapId', shiftController.updateSwap);
 
 router.use('/auth', authRoutes);
+router.use('/admin', adminTokenRoutes);
 router.use('/users', userRoutes);
 router.use('/workers', workerRoutes);
 router.use('/employers', employerRoutes);
@@ -38,7 +39,6 @@ router.use('/attendance', attendanceRoutes);
 router.use('/shift-swaps', shiftRoutes);
 router.use('/shifts', shiftsRouter);
 router.use('/notifications', notificationRoutes);
-router.use('/fcm', fcmRoutes); // Firebase Cloud Messaging routes
 router.use('/conversations', conversationRoutes);
 router.use('/budget', budgetRoutes);
 router.use('/payments', paymentRoutes);

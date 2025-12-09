@@ -5,7 +5,6 @@
 
 const admin = require('firebase-admin');
 const path = require('path');
-const FCMDebugLogger = require('../utils/fcm-debug-logger');
 
 class FirebaseNotificationService {
   constructor() {
@@ -18,36 +17,88 @@ class FirebaseNotificationService {
    */
   init() {
     try {
-      FCMDebugLogger.logInit('Firebase Admin SDK');
-
-      // Check if already initialized
-      if (admin.apps.length > 0) {
-        this.initialized = true;
-        console.log('✅ Firebase Admin SDK already initialized');
-        FCMDebugLogger.logInitComplete();
-        return;
+      console.log('🔄 Starting Firebase initialization...');
+      
+      // Try to load service account FIRST
+      let serviceAccount;
+      
+      if (process.env.FIREBASE_SERVICE_ACCOUNT) {
+        console.log('📋 Loading Firebase credentials from FIREBASE_SERVICE_ACCOUNT env var');
+        serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
+      } else {
+        const serviceAccountPath = path.join(__dirname, '../../firebase-service-account.json');
+        console.log('📋 Checking for Firebase credentials file:', serviceAccountPath);
+        try {
+          serviceAccount = require(serviceAccountPath);
+          console.log('✅ Service account file found');
+        } catch (fileError) {
+          console.error('❌ Could not load firebase-service-account.json:', fileError.message);
+          throw new Error('Firebase service account file not found and FIREBASE_SERVICE_ACCOUNT env var not set');
+        }
       }
 
-      // Try to initialize with service account
-      const serviceAccountPath = process.env.FIREBASE_SERVICE_ACCOUNT_PATH ||
-        path.join(__dirname, '../../firebase-service-account.json');
-
-      admin.initializeApp({
-        credential: admin.credential.cert(serviceAccountPath),
+      // Validate service account
+      console.log('🔍 Validating service account...');
+      if (!serviceAccount || !serviceAccount.project_id) {
+        throw new Error('Invalid Firebase service account: missing project_id');
+      }
+      if (!serviceAccount.private_key) {
+        throw new Error('Invalid Firebase service account: missing private_key');
+      }
+      if (!serviceAccount.client_email) {
+        throw new Error('Invalid Firebase service account: missing client_email');
+      }
+      console.log('✅ Service account is valid');
+      console.log('   Project ID:', serviceAccount.project_id);
+      console.log('   Email:', serviceAccount.client_email);
+      
+      // Now check if Firebase is already initialized
+      if (admin.apps && admin.apps.length > 0) {
+        console.log('ℹ️  Firebase Admin SDK already has', admin.apps.length, 'app(s)');
+        
+        // Try to get the first app and check if it's the right one
+        try {
+          const existingApp = admin.app();
+          const existingProjectId = existingApp?.options?.credential?.projectId || 
+                                   serviceAccount.project_id; // fallback to what we loaded
+          
+          if (existingProjectId === serviceAccount.project_id) {
+            this.initialized = true;
+            console.log('✅ Firebase already initialized with correct project:', existingProjectId);
+            return;
+          } else {
+            console.warn('⚠️  Existing app has different project:', existingProjectId);
+            console.warn('⚠️  Deleting it to reinitialize with:', serviceAccount.project_id);
+            try {
+              existingApp.delete();
+              console.log('✅ Deleted old Firebase app');
+            } catch (delErr) {
+              console.warn('⚠️ Could not delete old app:', delErr.message);
+            }
+          }
+        } catch (checkErr) {
+          console.log('ℹ️  Could not check existing app:', checkErr.message);
+        }
+      }
+      
+      console.log('🚀 Initializing Firebase Admin SDK...');
+      const initResult = admin.initializeApp({
+        credential: admin.credential.cert(serviceAccount),
       });
 
       this.initialized = true;
       console.log('✅ Firebase Admin SDK initialized successfully');
-      FCMDebugLogger.logInitComplete();
+      console.log('   App name:', initResult.name);
+      console.log('   Apps count:', admin.apps.length);
+      
+      // Verify messaging is available
+      const messaging = admin.messaging();
+      console.log('✅ Firebase Messaging API available');
+      
     } catch (error) {
-      FCMDebugLogger.logError('firebase-init', error, {
-        serviceAccountPath: process.env.FIREBASE_SERVICE_ACCOUNT_PATH || 'default'
-      });
-      console.error('❌ Firebase initialization error:', error.message);
-      console.log('⚠️  Firebase notifications will be unavailable. Make sure to:');
-      console.log('   1. Download firebase-service-account.json from Firebase Console');
-      console.log('   2. Place it in the project root directory');
-      console.log('   3. Or set FIREBASE_SERVICE_ACCOUNT_PATH environment variable');
+      console.error('❌ Firebase initialization failed:', error.message);
+      console.log('⚠️  Stack:', error.stack);
+      this.initialized = false;
     }
   }
 
@@ -68,8 +119,6 @@ class FirebaseNotificationService {
         console.warn('⚠️ Invalid or empty FCM token provided');
         throw new Error('Invalid FCM token');
       }
-
-      FCMDebugLogger.logTokenValidation(fcmToken, true);
 
       // Ensure all data values are strings (Firebase requirement)
       const cleanData = {};
@@ -113,29 +162,23 @@ class FirebaseNotificationService {
       };
 
       // Log the message structure for debugging
-      FCMDebugLogger.logNotificationSend(
-        payload.title,
-        payload.body,
-        1,
-        [fcmToken]
-      );
+      console.log('📤 Sending Firebase message with data keys:', Object.keys(cleanData));
+
+      // Verify Firebase app is available
+      if (!admin.app()) {
+        throw new Error('Firebase app not initialized. Check your service account configuration.');
+      }
 
       const response = await admin.messaging().send(message);
-      FCMDebugLogger.logNotificationSuccess(response, 1, 0);
+      console.log('✅ Notification sent successfully:', response);
       return response;
     } catch (error) {
-      FCMDebugLogger.logNotificationError(error, fcmToken);
-      
-      // Categorize the error
+      // Suppress "SenderId mismatch" errors (happens with mismatched Firebase projects)
       if (error.code === 'messaging/mismatched-credential') {
-        console.warn('⚠️  Firebase token mismatch (likely from different Firebase project)');
-      } else if (error.code === 'messaging/invalid-registration-token' || 
-                 error.message.includes('Requested entity was not found')) {
-        console.warn('⚠️  Invalid or expired FCM token - token should be cleared and regenerated');
-      } else if (error.message.includes('not initialized')) {
-        console.error('🔴 CRITICAL: Firebase Admin SDK not initialized - check firebase-service-account.json');
+        console.warn('⚠️ Firebase token mismatch (likely from different Firebase project) - use real mobile app tokens');
+        throw error; // Re-throw for caller to handle
       }
-      
+      console.error('❌ Error sending notification:', error.message);
       throw error;
     }
   }
@@ -193,6 +236,14 @@ class FirebaseNotificationService {
         },
       }));
 
+      // Verify Firebase app is available
+      if (!admin.app()) {
+        throw new Error('Firebase app not initialized. Check your service account configuration.');
+      }
+
+      console.log('🚀 Calling admin.messaging().sendAll() with', messages.length, 'messages');
+      console.log('📋 First message structure:', JSON.stringify(messages[0], null, 2).substring(0, 200));
+      
       const response = await admin.messaging().sendAll(messages);
       console.log(`✅ Sent ${response.successCount} notifications, ${response.failureCount} failed`);
       return response;

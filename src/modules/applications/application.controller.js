@@ -122,17 +122,7 @@ exports.createApplication = catchAsync(async (req, res, next) => {
     await req.user.save();
   }
 
-  // Send Firebase notifications to employer about new application
-  setImmediate(async () => {
-    try {
-      const employer = await User.findById(job.employer);
-      if (employer) {
-        await notificationTriggers.notifyApplicationReceived(application, job, req.user, employer);
-      }
-    } catch (err) {
-      console.error('Failed to send application notification:', err.message);
-    }
-  });
+  res.status(201).json({ status: 'success', data: application });
 
   res.status(201).json({ status: 'success', data: application });
 });

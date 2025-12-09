@@ -6,12 +6,18 @@
 const express = require('express');
 const router = express.Router();
 const notificationController = require('../controllers/notification.controller');
+const { protect } = require('../shared/middlewares/auth.middleware');
 
 /**
- * Health check
+ * Health check (PUBLIC - no auth required)
  * GET /api/notifications/health
  */
 router.get('/health', notificationController.healthCheck);
+
+/**
+ * Protect all other notification endpoints
+ */
+router.use(protect);
 
 /**
  * Send notification to single device

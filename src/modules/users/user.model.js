@@ -18,7 +18,7 @@ const userSchema = new mongoose.Schema(
     },
     userType: {
       type: String,
-      enum: ['worker', 'employer'],
+      enum: ['worker', 'employer', 'admin'],
       required: true
     },
     firstName: { type: String, trim: true },

@@ -1,0 +1,282 @@
+{
+  "info": {
+    "name": "Messaging API with FCM",
+    "description": "Complete messaging system with Firebase Cloud Messaging notifications",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Messages",
+      "item": [
+        {
+          "name": "Send Message",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwtToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"conversationId\": \"{{conversationId}}\",\n  \"receiverId\": \"{{receiverId}}\",\n  \"text\": \"Hello! This message will trigger an FCM notification.\",\n  \"image\": null,\n  \"file\": null\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/messages/send",
+              "protocol": "https",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "messages", "send"]
+            },
+            "description": "Send a message to receiver - Automatically sends FCM notification to all receiver's active devices"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Conversations",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwtToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/messages/conversations?page=1&limit=20",
+              "protocol": "https",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "messages", "conversations"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "20"
+                }
+              ]
+            },
+            "description": "Get all user's conversations with pagination"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Conversation Messages",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwtToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/messages/conversation/{{conversationId}}?page=1&limit=20",
+              "protocol": "https",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "messages", "conversation", "{{conversationId}}"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "20"
+                }
+              ]
+            },
+            "description": "Get all messages in a conversation - Automatically marks them as read"
+          },
+          "response": []
+        },
+        {
+          "name": "Mark Message as Read",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwtToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/messages/{{messageId}}/read",
+              "protocol": "https",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "messages", "{{messageId}}", "read"]
+            },
+            "description": "Mark a specific message as read"
+          },
+          "response": []
+        },
+        {
+          "name": "Delete Message",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwtToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/messages/{{messageId}}",
+              "protocol": "https",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "messages", "{{messageId}}"]
+            },
+            "description": "Delete a message for current user (soft delete)"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "FCM Integration Testing",
+      "item": [
+        {
+          "name": "1. Register FCM Token (Do This First)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwtToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fcmToken\": \"{{fcmToken}}\",\n  \"platform\": \"android\",\n  \"deviceId\": \"my-test-device\",\n  \"deviceName\": \"Test Device\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/notifications/register-token",
+              "protocol": "https",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "notifications", "register-token"]
+            },
+            "description": "Register your FCM token so you can receive message notifications"
+          },
+          "response": []
+        },
+        {
+          "name": "2. Send Test Message (Receive Notification)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwtToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"conversationId\": \"{{conversationId}}\",\n  \"receiverId\": \"{{yourUserId}}\",\n  \"text\": \"🎉 Test message from Postman! Check your device for notification.\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/messages/send",
+              "protocol": "https",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "messages", "send"]
+            },
+            "description": "Send yourself a test message - Your device should receive FCM notification immediately"
+          },
+          "response": []
+        },
+        {
+          "name": "3. Verify FCM Tokens Registered",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwtToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/notifications/tokens",
+              "protocol": "https",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "notifications", "tokens"]
+            },
+            "description": "Check all registered FCM tokens for your account"
+          },
+          "response": []
+        },
+        {
+          "name": "4. Check Firebase Health",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/notifications/health",
+              "protocol": "https",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "notifications", "health"]
+            },
+            "description": "Verify Firebase is initialized and ready to send notifications"
+          },
+          "response": []
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "lovy-dusky.vercel.app",
+      "type": "string",
+      "description": "Your Vercel backend URL (change to localhost:3000 for local testing)"
+    },
+    {
+      "key": "jwtToken",
+      "value": "PASTE_YOUR_JWT_TOKEN_HERE",
+      "type": "string",
+      "description": "Your JWT token from login - Will authenticate all requests"
+    },
+    {
+      "key": "fcmToken",
+      "value": "PASTE_YOUR_FCM_TOKEN_FROM_APP_LOGS",
+      "type": "string",
+      "description": "Your device's FCM token - Get from Flutter app logs (search for '🔔 [FCM] Device Token:')"
+    },
+    {
+      "key": "conversationId",
+      "value": "PASTE_CONVERSATION_ID_HERE",
+      "type": "string",
+      "description": "MongoDB ObjectId of the conversation - Get from getConversations response"
+    },
+    {
+      "key": "receiverId",
+      "value": "PASTE_RECEIVER_USER_ID_HERE",
+      "type": "string",
+      "description": "The user ID of message recipient - Get from user profile or login response"
+    },
+    {
+      "key": "yourUserId",
+      "value": "PASTE_YOUR_USER_ID_HERE",
+      "type": "string",
+      "description": "Your own user ID - For testing by sending message to yourself"
+    },
+    {
+      "key": "messageId",
+      "value": "PASTE_MESSAGE_ID_HERE",
+      "type": "string",
+      "description": "MongoDB ObjectId of a message - Get from getConversationMessages response"
+    }
+  ]
+}

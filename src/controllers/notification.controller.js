@@ -4,6 +4,8 @@
  */
 
 const firebaseService = require('../services/firebase-notification.service');
+const { sendNotificationToUser, sendBulkNotifications } = require('../services/fcm-helper.service');
+const User = require('../modules/users/user.model');
 
 /**
  * Send notification to a single device
@@ -250,9 +252,45 @@ exports.healthCheck = async (req, res) => {
 };
 
 /**
- * In-memory storage for FCM tokens (use MongoDB in production)
+ * Test sending notification to a user
+ * POST /api/notifications/test
+ * Body: {
+ *   userId: string,
+ *   title?: string,
+ *   body?: string
+ * }
  */
-const userTokens = new Map(); // Map<userId, Set<token>>
+exports.testNotification = async (req, res) => {
+  try {
+    const { userId, title = 'Test Notification', body = 'This is a test notification from the backend' } = req.body;
+
+    if (!userId) {
+      return res.status(400).json({
+        success: false,
+        message: 'userId is required',
+      });
+    }
+
+    console.log(`🧪 [TEST] Sending test notification to user ${userId}`);
+
+    const result = await sendNotificationToUser(userId, title, body, {
+      test: 'true',
+      timestamp: new Date().toISOString(),
+    });
+
+    return res.json({
+      success: true,
+      message: 'Test notification sent',
+      data: result,
+    });
+  } catch (error) {
+    console.error('❌ Error sending test notification:', error.message);
+    return res.status(500).json({
+      success: false,
+      message: error.message || 'Failed to send test notification',
+    });
+  }
+};
 
 /**
  * Register FCM token for user device
@@ -267,7 +305,7 @@ const userTokens = new Map(); // Map<userId, Set<token>>
 exports.registerFCMToken = async (req, res) => {
   try {
     const { fcmToken, platform, deviceId } = req.body;
-    const userId = req.user?.id || req.user?._id || 'guest';
+    const userId = req.user?.id || req.user?._id;
 
     console.log('🔔 [FCM] Register Token Request');
     console.log(`   📱 Platform: ${platform}`);
@@ -292,20 +330,35 @@ exports.registerFCMToken = async (req, res) => {
       });
     }
 
-    // Store token in memory (production: save to MongoDB)
-    if (!userTokens.has(userId)) {
-      userTokens.set(userId, new Set());
+    // Save token to database
+    const user = await User.findByIdAndUpdate(
+      userId,
+      {
+        fcmToken: fcmToken.trim(),
+        platform: platform || 'android',
+        fcmTokenUpdatedAt: new Date(),
+      },
+      { new: true, runValidators: true }
+    );
+
+    if (!user) {
+      console.warn('⚠️  [FCM] User not found');
+      return res.status(404).json({
+        success: false,
+        message: 'User not found',
+      });
     }
-    userTokens.get(userId).add(fcmToken);
 
     console.log(`✅ [FCM] Token registered for user ${userId}`);
-    console.log(`   📊 Total devices for user: ${userTokens.get(userId).size}`);
+    console.log(`   📊 User: ${user.email}`);
+    console.log(`   ⏰ Updated at: ${user.fcmTokenUpdatedAt}`);
 
     return res.json({
       success: true,
       message: 'FCM token registered successfully',
       data: {
         userId,
+        email: user.email,
         platform,
         deviceId,
         tokenRegistered: true,
@@ -327,7 +380,7 @@ exports.registerFCMToken = async (req, res) => {
  */
 exports.getUserTokens = async (req, res) => {
   try {
-    const userId = req.user?.id || req.user?._id || 'guest';
+    const userId = req.user?.id || req.user?._id;
 
     console.log(`🔍 [FCM] Fetching tokens for user: ${userId}`);
 
@@ -338,21 +391,26 @@ exports.getUserTokens = async (req, res) => {
       });
     }
 
-    const tokens = userTokens.get(userId);
-    const tokenArray = tokens ? Array.from(tokens) : [];
+    const user = await User.findById(userId).select('email fcmToken platform fcmTokenUpdatedAt');
 
-    console.log(`✅ [FCM] Found ${tokenArray.length} token(s) for user ${userId}`);
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found',
+      });
+    }
+
+    console.log(`✅ [FCM] Found token for user ${userId}`);
 
     return res.json({
       success: true,
       data: {
         userId,
-        tokenCount: tokenArray.length,
-        tokens: tokenArray.map((token, idx) => ({
-          index: idx + 1,
-          token: `${token.substring(0, 40)}...${token.substring(token.length - 10)}`,
-          fullToken: token,
-        })),
+        email: user.email,
+        hasToken: !!user.fcmToken,
+        token: user.fcmToken ? `${user.fcmToken.substring(0, 40)}...${user.fcmToken.substring(user.fcmToken.length - 10)}` : null,
+        platform: user.platform || null,
+        updatedAt: user.fcmTokenUpdatedAt || null,
       },
     });
   } catch (error) {
@@ -375,11 +433,11 @@ exports.getUserTokens = async (req, res) => {
 exports.unregisterFCMToken = async (req, res) => {
   try {
     const { fcmToken } = req.body;
-    const userId = req.user?.id || req.user?._id || 'guest';
+    const userId = req.user?.id || req.user?._id;
 
     console.log(`🗑️  [FCM] Unregister Token Request`);
     console.log(`   👤 User ID: ${userId}`);
-    console.log(`   🔑 Token: ${fcmToken ? fcmToken.substring(0, 40) + '...' : 'all tokens'}`);
+    console.log(`   🔑 Token: ${fcmToken ? fcmToken.substring(0, 40) + '...' : 'removing all'}`);
 
     if (!userId) {
       return res.status(401).json({
@@ -388,44 +446,36 @@ exports.unregisterFCMToken = async (req, res) => {
       });
     }
 
-    const userTokenSet = userTokens.get(userId);
+    const user = await User.findById(userId);
 
-    if (!userTokenSet || userTokenSet.size === 0) {
-      console.warn(`⚠️  [FCM] No tokens found for user ${userId}`);
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found',
+      });
+    }
+
+    if (!user.fcmToken) {
+      console.warn(`⚠️  [FCM] No token found for user ${userId}`);
       return res.json({
         success: true,
-        message: 'No tokens to remove',
+        message: 'No token to remove',
         data: { tokensRemoved: 0 },
       });
     }
 
-    if (fcmToken) {
-      // Remove specific token
-      const removed = userTokenSet.delete(fcmToken);
-      if (removed) {
-        console.log(`✅ [FCM] Token removed for user ${userId}`);
-        console.log(`   📊 Remaining devices: ${userTokenSet.size}`);
-      } else {
-        console.warn(`⚠️  [FCM] Token not found for user ${userId}`);
-      }
+    // Remove token from database
+    user.fcmToken = null;
+    user.platform = null;
+    await user.save();
 
-      return res.json({
-        success: true,
-        message: 'Token removed successfully',
-        data: { tokensRemoved: removed ? 1 : 0 },
-      });
-    } else {
-      // Remove all tokens
-      const count = userTokenSet.size;
-      userTokenSet.clear();
-      console.log(`✅ [FCM] All ${count} token(s) removed for user ${userId}`);
+    console.log(`✅ [FCM] Token removed for user ${userId}`);
 
-      return res.json({
-        success: true,
-        message: 'All tokens removed successfully',
-        data: { tokensRemoved: count },
-      });
-    }
+    return res.json({
+      success: true,
+      message: 'Token removed successfully',
+      data: { tokensRemoved: 1 },
+    });
   } catch (error) {
     console.error('❌ [FCM] Error unregistering token:', error.message);
     return res.status(500).json({

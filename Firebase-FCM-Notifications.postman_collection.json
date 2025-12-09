@@ -1,0 +1,269 @@
+{
+  "info": {
+    "name": "Firebase FCM Notifications API",
+    "description": "Complete Firebase Cloud Messaging notification testing collection for WorkConnect backend",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Health Check",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:3000/api/notifications/health",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "3000",
+          "path": ["api", "notifications", "health"]
+        },
+        "description": "Check if Firebase is initialized and ready"
+      },
+      "response": []
+    },
+    {
+      "name": "Send to Single Device",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{jwtToken}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"fcmToken\": \"{{fcmToken}}\",\n  \"title\": \"Test Notification\",\n  \"body\": \"This is a test message from Postman\",\n  \"data\": {\n    \"screen\": \"jobs\",\n    \"action\": \"open_notification\"\n  }\n}"
+        },
+        "url": {
+          "raw": "http://localhost:3000/api/notifications/send",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "3000",
+          "path": ["api", "notifications", "send"]
+        },
+        "description": "Send notification to a single device using FCM token"
+      },
+      "response": []
+    },
+    {
+      "name": "Send Batch Notification",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{jwtToken}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"fcmTokens\": [\n    \"{{fcmToken}}\"\n  ],\n  \"title\": \"Batch Notification\",\n  \"body\": \"This message goes to multiple devices\",\n  \"data\": {\n    \"screen\": \"jobs\",\n    \"type\": \"batch\"\n  }\n}"
+        },
+        "url": {
+          "raw": "http://localhost:3000/api/notifications/send-batch",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "3000",
+          "path": ["api", "notifications", "send-batch"]
+        },
+        "description": "Send notification to multiple devices at once"
+      },
+      "response": []
+    },
+    {
+      "name": "Register FCM Token",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{jwtToken}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"fcmToken\": \"{{fcmToken}}\",\n  \"platform\": \"android\",\n  \"deviceId\": \"test-device\"\n}"
+        },
+        "url": {
+          "raw": "http://localhost:3000/api/notifications/register-token",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "3000",
+          "path": ["api", "notifications", "register-token"]
+        },
+        "description": "Register/save user's FCM token in database"
+      },
+      "response": []
+    },
+    {
+      "name": "Get User Tokens",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{jwtToken}}"
+          }
+        ],
+        "url": {
+          "raw": "http://localhost:3000/api/notifications/tokens",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "3000",
+          "path": ["api", "notifications", "tokens"]
+        },
+        "description": "Get all registered FCM tokens for current user"
+      },
+      "response": []
+    },
+    {
+      "name": "Send Test Notification",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{jwtToken}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"userId\": \"{{userId}}\",\n  \"title\": \"Test from Backend\",\n  \"body\": \"Backend fetched token from database and sent this\",\n  \"data\": {\n    \"screen\": \"jobs\"\n  }\n}"
+        },
+        "url": {
+          "raw": "http://localhost:3000/api/notifications/test",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "3000",
+          "path": ["api", "notifications", "test"]
+        },
+        "description": "Send test notification by User ID (backend automatically fetches token from database)"
+      },
+      "response": []
+    },
+    {
+      "name": "Send to Topic",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{jwtToken}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"topic\": \"announcements\",\n  \"title\": \"Topic Announcement\",\n  \"body\": \"This message is sent to all devices subscribed to this topic\",\n  \"data\": {\n    \"screen\": \"home\"\n  }\n}"
+        },
+        "url": {
+          "raw": "http://localhost:3000/api/notifications/send-to-topic",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "3000",
+          "path": ["api", "notifications", "send-to-topic"]
+        },
+        "description": "Send notification to all devices subscribed to a topic"
+      },
+      "response": []
+    },
+    {
+      "name": "Subscribe to Topic",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{jwtToken}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"fcmToken\": \"{{fcmToken}}\",\n  \"topic\": \"announcements\"\n}"
+        },
+        "url": {
+          "raw": "http://localhost:3000/api/notifications/subscribe",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "3000",
+          "path": ["api", "notifications", "subscribe"]
+        },
+        "description": "Subscribe a device to a topic"
+      },
+      "response": []
+    },
+    {
+      "name": "Unsubscribe from Topic",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{jwtToken}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"fcmToken\": \"{{fcmToken}}\",\n  \"topic\": \"announcements\"\n}"
+        },
+        "url": {
+          "raw": "http://localhost:3000/api/notifications/unsubscribe",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "3000",
+          "path": ["api", "notifications", "unsubscribe"]
+        },
+        "description": "Unsubscribe a device from a topic"
+      },
+      "response": []
+    }
+  ],
+  "variable": [
+    {
+      "key": "fcmToken",
+      "value": "PASTE_YOUR_FCM_TOKEN_HERE",
+      "type": "string",
+      "description": "Your device's Firebase Cloud Messaging token"
+    },
+    {
+      "key": "jwtToken",
+      "value": "PASTE_YOUR_JWT_TOKEN_HERE",
+      "type": "string",
+      "description": "Your JWT authentication token from login"
+    },
+    {
+      "key": "userId",
+      "value": "PASTE_YOUR_USER_ID_HERE",
+      "type": "string",
+      "description": "Your user ID (MongoDB ObjectId)"
+    }
+  ]
+}

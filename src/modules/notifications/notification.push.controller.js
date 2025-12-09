@@ -1,112 +1,135 @@
-const catchAsync = require('../../shared/utils/catchAsync');
-const AppError = require('../../shared/utils/appError');
+/**
+ * Notification Push Controller
+ * Handles FCM token registration and push notification endpoints
+ */
+
 const User = require('../users/user.model');
+const AppError = require('../../shared/utils/appError');
+const { sendNotificationToUser } = require('../../services/fcm-helper.service');
 
-exports.registerFCMToken = catchAsync(async (req, res, next) => {
-  const { fcmToken, platform } = req.body;
-
-  if (!fcmToken) {
-    return next(new AppError('FCM token is required', 400));
-  }
-
-  const trimmedToken = fcmToken.trim();
-  
-  console.log(`✅ FCM Token Received:`);
-  console.log(`   Length: ${trimmedToken.length} chars`);
-  console.log(`   Preview: ${trimmedToken.substring(0, 50)}...`);
-  console.log(`   Platform: ${platform || 'android'}`);
-
-  // Update user's FCM token
-  const user = await User.findByIdAndUpdate(
-    req.user._id,
-    {
-      $set: {
-        fcmToken: trimmedToken,
-        platform: platform || 'android',
-        fcmTokenUpdatedAt: new Date()
-      }
-    },
-    { new: true }
-  );
-
-  if (!user) {
-    return next(new AppError('User not found', 404));
-  }
-
-  console.log(`📱 FCM token registered for user ${user.email}`);
-  console.log(`   Token length: ${trimmedToken.length}`);
-  console.log(`   Token preview: ${trimmedToken.substring(0, 50)}...${trimmedToken.substring(trimmedToken.length - 20)}`);
-  console.log(`   Platform: ${platform || 'android'}`);
-
-  res.status(200).json({
-    status: 'success',
-    message: 'FCM token registered successfully',
-    data: {
-      userId: user._id,
-      fcmToken: user.fcmToken,
-      platform: user.platform,
-      tokenLength: trimmedToken.length,
-      tokenPreview: `${trimmedToken.substring(0, 20)}...${trimmedToken.substring(trimmedToken.length - 20)}`
-    }
-  });
-});
-
-exports.unregisterFCMToken = catchAsync(async (req, res, next) => {
-  // Remove user's FCM token
-  const user = await User.findByIdAndUpdate(
-    req.user._id,
-    {
-      $unset: {
-        fcmToken: 1,
-        platform: 1,
-        fcmTokenUpdatedAt: 1
-      }
-    },
-    { new: true }
-  );
-
-  if (!user) {
-    return next(new AppError('User not found', 404));
-  }
-
-  console.log(`📱 FCM token unregistered for user ${user.email}`);
-
-  res.status(200).json({
-    status: 'success',
-    message: 'FCM token unregistered successfully'
-  });
-});
-
-exports.sendTestNotification = catchAsync(async (req, res, next) => {
-  const notificationService = require('./notification.service');
-  
-  const { title, message, type = 'system', priority = 'low' } = req.body;
-
-  if (!title || !message) {
-    return next(new AppError('Title and message are required', 400));
-  }
-
+/**
+ * Register or update FCM token for a user
+ * POST /api/notifications/register-fcm-token
+ * Body: { fcmToken, platform }
+ */
+exports.registerFcmToken = async (req, res, next) => {
   try {
-    // Send notification to the current user
-    const notification = await notificationService.sendSafeNotification({
-      recipientId: req.user._id,
-      type,
-      priority,
-      title,
-      message,
-      metadata: {
-        isTest: true,
-        sentAt: new Date().toISOString()
-      }
-    });
+    const { fcmToken, platform } = req.body;
+    const userId = req.user._id;
+
+    // Validation
+    if (!fcmToken || typeof fcmToken !== 'string') {
+      return next(new AppError('FCM token is required', 400));
+    }
+
+    if (!platform || !['android', 'ios', 'web'].includes(platform)) {
+      return next(new AppError('Platform must be android, ios, or web', 400));
+    }
+
+    // Update user FCM token
+    const user = await User.findByIdAndUpdate(
+      userId,
+      {
+        fcmToken: fcmToken.trim(),
+        platform,
+        fcmTokenUpdatedAt: new Date(),
+      },
+      { new: true }
+    ).select('_id email fcmToken platform');
+
+    if (!user) {
+      return next(new AppError('User not found', 404));
+    }
+
+    console.log(`✅ FCM token registered for user ${userId} (${platform})`);
 
     res.status(200).json({
-      status: 'success',
-      message: 'Test notification sent successfully',
-      data: notification
+      success: true,
+      message: 'FCM token registered successfully',
+      data: {
+        userId: user._id,
+        email: user.email,
+        platform: user.platform,
+        tokenRegisteredAt: user.fcmTokenUpdatedAt,
+      },
     });
   } catch (error) {
-    console.error('Error sending test notification:', error);
-    return next(new AppError('Failed to send test notification: ' + error.message, 500));
+    next(error);
   }
-});
+};
+
+/**
+ * Test endpoint - send test notification to authenticated user
+ * POST /api/notifications/test-send
+ */
+exports.testSendNotification = async (req, res, next) => {
+  try {
+    const userId = req.user._id;
+    const { title, body, data } = req.body;
+
+    // Validation
+    if (!title || !body) {
+      return next(new AppError('Title and body are required', 400));
+    }
+
+    // Send test notification
+    const result = await sendNotificationToUser(
+      userId,
+      title || 'Test Notification',
+      body || 'This is a test push notification from your backend',
+      data || { screen: 'home', test: 'true' }
+    );
+
+    if (result.skipped) {
+      return res.status(503).json({
+        success: false,
+        message: 'Firebase not initialized - push notifications disabled',
+      });
+    }
+
+    if (result.noToken) {
+      return res.status(400).json({
+        success: false,
+        message: 'No FCM token registered for this user',
+        hint: 'Call /api/notifications/register-fcm-token first',
+      });
+    }
+
+    res.status(200).json({
+      success: result.successCount > 0,
+      message: `Notification sent: ${result.successCount} success, ${result.failureCount} failed`,
+      data: result,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * Get current user's FCM token info
+ * GET /api/notifications/fcm-token
+ */
+exports.getFcmTokenInfo = async (req, res, next) => {
+  try {
+    const userId = req.user._id;
+
+    const user = await User.findById(userId).select('fcmToken platform fcmTokenUpdatedAt');
+
+    if (!user) {
+      return next(new AppError('User not found', 404));
+    }
+
+    res.status(200).json({
+      success: true,
+      data: {
+        userId: user._id,
+        hasToken: !!user.fcmToken,
+        platform: user.platform || 'unknown',
+        tokenRegisteredAt: user.fcmTokenUpdatedAt || null,
+        tokenLength: user.fcmToken ? user.fcmToken.length : 0,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};

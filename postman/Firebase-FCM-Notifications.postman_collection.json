@@ -1,0 +1,321 @@
+{
+  "info": {
+    "_postman_id": "fcm-notifications-collection",
+    "name": "Firebase Cloud Messaging (FCM) - Notifications",
+    "description": "Complete FCM notification testing collection",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Health Check",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:3000/api/notifications/health",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "3000",
+          "path": [
+            "api",
+            "notifications",
+            "health"
+          ]
+        },
+        "description": "Verify Firebase is initialized"
+      }
+    },
+    {
+      "name": "Register FCM Token",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{jwt_token}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"fcmToken\": \"cZmNlYH_Qw-zgXvn08Z0Bb:APA91bG7TRNdzEBklaxrMqWDXVD296toA1hJiPlPFwMA5CyzraF2MoOqUpWwMTg2CTsTgLClKbaazi_wczjB8p4VfLouYViGDM7jKbfDZo7nR6Tcc6IxYGg\",\n  \"platform\": \"android\",\n  \"deviceId\": \"emulator-5554\"\n}"
+        },
+        "url": {
+          "raw": "http://localhost:3000/api/notifications/register-token",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "3000",
+          "path": [
+            "api",
+            "notifications",
+            "register-token"
+          ]
+        },
+        "description": "Register FCM token for authenticated user"
+      }
+    },
+    {
+      "name": "Get User Tokens",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{jwt_token}}"
+          }
+        ],
+        "url": {
+          "raw": "http://localhost:3000/api/notifications/tokens",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "3000",
+          "path": [
+            "api",
+            "notifications",
+            "tokens"
+          ]
+        },
+        "description": "Get registered FCM tokens for current user"
+      }
+    },
+    {
+      "name": "Send Test Notification",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{jwt_token}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"userId\": \"{{user_id}}\",\n  \"title\": \"Test Notification 🎉\",\n  \"body\": \"This is a test notification from the Firebase backend!\"\n}"
+        },
+        "url": {
+          "raw": "http://localhost:3000/api/notifications/test",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "3000",
+          "path": [
+            "api",
+            "notifications",
+            "test"
+          ]
+        },
+        "description": "Send a test notification to a user"
+      }
+    },
+    {
+      "name": "Send Notification to Single Device",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"fcmToken\": \"cZmNlYH_Qw-zgXvn08Z0Bb:APA91bG7TRNdzEBklaxrMqWDXVD296toA1hJiPlPFwMA5CyzraF2MoOqUpWwMTg2CTsTgLClKbaazi_wczjB8p4VfLouYViGDM7jKbfDZo7nR6Tcc6IxYGg\",\n  \"title\": \"Hello! 👋\",\n  \"body\": \"This is a direct device notification\",\n  \"data\": {\n    \"screen\": \"jobs\",\n    \"jobId\": \"123\"\n  }\n}"
+        },
+        "url": {
+          "raw": "http://localhost:3000/api/notifications/send",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "3000",
+          "path": [
+            "api",
+            "notifications",
+            "send"
+          ]
+        },
+        "description": "Send notification to a single device (requires valid FCM token)"
+      }
+    },
+    {
+      "name": "Send Batch Notification",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"fcmTokens\": [\n    \"token1_here\",\n    \"token2_here\",\n    \"token3_here\"\n  ],\n  \"title\": \"Batch Notification 📢\",\n  \"body\": \"This notification goes to multiple devices\",\n  \"data\": {\n    \"broadcast\": \"true\",\n    \"campaign\": \"new_jobs\"\n  }\n}"
+        },
+        "url": {
+          "raw": "http://localhost:3000/api/notifications/send-batch",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "3000",
+          "path": [
+            "api",
+            "notifications",
+            "send-batch"
+          ]
+        },
+        "description": "Send notification to multiple devices at once"
+      }
+    },
+    {
+      "name": "Send Topic Notification",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"topic\": \"breaking-news\",\n  \"title\": \"Breaking News 🔥\",\n  \"body\": \"Important announcement for all subscribers\",\n  \"data\": {\n    \"newsId\": \"456\"\n  }\n}"
+        },
+        "url": {
+          "raw": "http://localhost:3000/api/notifications/send-topic",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "3000",
+          "path": [
+            "api",
+            "notifications",
+            "send-topic"
+          ]
+        },
+        "description": "Send notification to all devices subscribed to a topic"
+      }
+    },
+    {
+      "name": "Subscribe to Topic",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"fcmToken\": \"cZmNlYH_Qw-zgXvn08Z0Bb:APA91bG7TRNdzEBklaxrMqWDXVD296toA1hJiPlPFwMA5CyzraF2MoOqUpWwMTg2CTsTgLClKbaazi_wczjB8p4VfLouYViGDM7jKbfDZo7nR6Tcc6IxYGg\",\n  \"topic\": \"breaking-news\"\n}"
+        },
+        "url": {
+          "raw": "http://localhost:3000/api/notifications/subscribe",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "3000",
+          "path": [
+            "api",
+            "notifications",
+            "subscribe"
+          ]
+        },
+        "description": "Subscribe a device to a topic"
+      }
+    },
+    {
+      "name": "Unsubscribe from Topic",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"fcmToken\": \"cZmNlYH_Qw-zgXvn08Z0Bb:APA91bG7TRNdzEBklaxrMqWDXVD296toA1hJiPlPFwMA5CyzraF2MoOqUpWwMTg2CTsTgLClKbaazi_wczjB8p4VfLouYViGDM7jKbfDZo7nR6Tcc6IxYGg\",\n  \"topic\": \"breaking-news\"\n}"
+        },
+        "url": {
+          "raw": "http://localhost:3000/api/notifications/unsubscribe",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "3000",
+          "path": [
+            "api",
+            "notifications",
+            "unsubscribe"
+          ]
+        },
+        "description": "Unsubscribe a device from a topic"
+      }
+    },
+    {
+      "name": "Unregister FCM Token",
+      "request": {
+        "method": "DELETE",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{jwt_token}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{}"
+        },
+        "url": {
+          "raw": "http://localhost:3000/api/notifications/register-token",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "3000",
+          "path": [
+            "api",
+            "notifications",
+            "register-token"
+          ]
+        },
+        "description": "Unregister/delete FCM token for current user"
+      }
+    }
+  ],
+  "variable": [
+    {
+      "key": "jwt_token",
+      "value": "your_jwt_token_here",
+      "type": "string"
+    },
+    {
+      "key": "user_id",
+      "value": "your_user_id_here",
+      "type": "string"
+    }
+  ]
+}

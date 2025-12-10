@@ -15,8 +15,13 @@ router.post('/send', protectAuth, async (req, res) => {
     const { conversationId, receiverId, text, image, file } = req.body;
     const senderId = req.user._id || req.user.id;
 
+    console.log('📨 [MSG] Send request received');
+    console.log('📨 [MSG] Request body:', JSON.stringify(req.body, null, 2));
+    console.log('📨 [MSG] Sender ID:', senderId);
+
     // Validation with helpful error messages
     if (!conversationId) {
+      console.log('❌ [MSG] Missing conversationId');
       return res.status(400).json({
         success: false,
         message: 'conversationId is required',
@@ -24,6 +29,7 @@ router.post('/send', protectAuth, async (req, res) => {
     }
     
     if (!receiverId || receiverId.trim() === '') {
+      console.log('❌ [MSG] Missing or empty receiverId');
       return res.status(400).json({
         success: false,
         message: 'receiverId is required and cannot be empty',
@@ -31,13 +37,15 @@ router.post('/send', protectAuth, async (req, res) => {
     }
     
     if (!text || text.trim() === '') {
+      console.log('❌ [MSG] Missing or empty text');
       return res.status(400).json({
         success: false,
         message: 'Message text is required',
       });
     }
 
-    console.log('📨 [MSG] Sending message:', {
+    console.log('📨 [MSG] Validation passed');
+    console.log('📨 [MSG] Message details:', {
       conversationId,
       senderId,
       receiverId,
@@ -45,15 +53,19 @@ router.post('/send', protectAuth, async (req, res) => {
     });
 
     // Get sender details
+    console.log('📨 [MSG] Looking up sender details...');
     const sender = await User.findById(senderId).select('firstName lastName image');
     if (!sender) {
+      console.log('❌ [MSG] Sender not found with ID:', senderId);
       return res.status(404).json({
         success: false,
         message: 'Sender not found',
       });
     }
+    console.log('📨 [MSG] Sender found:', sender.firstName, sender.lastName);
 
     // Create message
+    console.log('📨 [MSG] Creating message...');
     const message = new Message({
       conversationId,
       senderId,
@@ -66,8 +78,10 @@ router.post('/send', protectAuth, async (req, res) => {
     });
 
     await message.save();
+    console.log('📨 [MSG] Message saved with ID:', message._id);
 
     // Update conversation
+    console.log('📨 [MSG] Updating conversation...');
     await Conversation.findByIdAndUpdate(
       conversationId,
       {
@@ -78,25 +92,33 @@ router.post('/send', protectAuth, async (req, res) => {
       },
       { new: true }
     );
+    console.log('📨 [MSG] Conversation updated');
 
     // Send FCM notification to receiver
     try {
       console.log('📱 [MSG] Sending FCM notification to receiver:', receiverId);
 
       // Get receiver's active FCM tokens (from both User model and FCMToken collection)
+      console.log('📱 [MSG] Looking up FCM tokens for receiver...');
       let receiverTokens = await FCMToken.find({
         userId: receiverId,
         isActive: true,
       }).select('fcmToken');
 
+      console.log('📱 [MSG] Found', receiverTokens.length, 'active FCM tokens from FCMToken collection');
+
       // Also check User model for fcmToken field
       const receiverUser = await User.findById(receiverId).select('fcmToken');
       if (receiverUser?.fcmToken && !receiverTokens.find(t => t.fcmToken === receiverUser.fcmToken)) {
+        console.log('📱 [MSG] Adding FCM token from User model');
         receiverTokens.push({ fcmToken: receiverUser.fcmToken });
       }
 
       if (receiverTokens.length > 0) {
         const fcmTokens = receiverTokens.map((t) => t.fcmToken);
+        console.log('📱 [MSG] Total tokens to send to:', fcmTokens.length);
+        console.log('📱 [MSG] Tokens:', fcmTokens);
+        
         const notificationTitle = `${sender.firstName} sent a message`;
         const notificationBody = text.substring(0, 100); // First 100 chars
 
@@ -109,13 +131,18 @@ router.post('/send', protectAuth, async (req, res) => {
           senderName: sender.firstName,
         };
 
+        console.log('📱 [MSG] Notification data:', JSON.stringify(notificationData, null, 2));
+
         try {
+          console.log('📱 [MSG] Calling firebaseNotificationService.sendToMultipleDevices...');
           const result = await firebaseNotificationService.sendToMultipleDevices(
             fcmTokens,
             notificationTitle,
             notificationBody,
             notificationData
           );
+
+          console.log('📱 [MSG] FCM send result:', JSON.stringify(result, null, 2));
 
           // Mark notification as sent
           await Message.findByIdAndUpdate(message._id, {
@@ -126,6 +153,7 @@ router.post('/send', protectAuth, async (req, res) => {
           console.log('✅ [MSG] FCM notification sent to', result.successCount, 'device(s)');
         } catch (sendError) {
           console.warn('⚠️ [MSG] FCM notification send failed (non-blocking):', sendError.message);
+          console.warn('⚠️ [MSG] Error details:', sendError);
           // Mark as attempted even if some failed
           await Message.findByIdAndUpdate(message._id, {
             notificationSent: false,

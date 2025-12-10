@@ -15,12 +15,34 @@ router.post('/send', protectAuth, async (req, res) => {
     const { conversationId, receiverId, text, image, file } = req.body;
     const senderId = req.user._id || req.user.id;
 
-    if (!conversationId || !receiverId || !text) {
+    // Validation with helpful error messages
+    if (!conversationId) {
       return res.status(400).json({
         success: false,
-        message: 'conversationId, receiverId, and text are required',
+        message: 'conversationId is required',
       });
     }
+    
+    if (!receiverId || receiverId.trim() === '') {
+      return res.status(400).json({
+        success: false,
+        message: 'receiverId is required and cannot be empty',
+      });
+    }
+    
+    if (!text || text.trim() === '') {
+      return res.status(400).json({
+        success: false,
+        message: 'Message text is required',
+      });
+    }
+
+    console.log('📨 [MSG] Sending message:', {
+      conversationId,
+      senderId,
+      receiverId,
+      textLength: text.length,
+    });
 
     // Get sender details
     const sender = await User.findById(senderId).select('firstName lastName image');

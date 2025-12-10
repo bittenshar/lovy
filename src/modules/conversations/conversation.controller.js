@@ -6,12 +6,8 @@ const notificationService = require('../notifications/notification.service');
 
 exports.listConversations = catchAsync(async (req, res) => {
   const filter = { participants: req.user._id };
-  if (req.query.jobId) {
-    filter.job = req.query.jobId;
-  }
   const conversations = await Conversation.find(filter)
-    .sort({ updatedAt: -1 })
-    .populate('job');
+    .sort({ updatedAt: -1 });
   res.status(200).json({ status: 'success', data: conversations });
 });
 
@@ -24,7 +20,7 @@ exports.createConversation = catchAsync(async (req, res, next) => {
   // Check for existing conversation with same participants
   const existingConversation = await Conversation.findOne({
     participants: { $all: participants, $size: participants.length }
-  }).populate('job');
+  });
 
   if (existingConversation) {
     return res.status(200).json({ 
@@ -35,8 +31,7 @@ exports.createConversation = catchAsync(async (req, res, next) => {
   }
 
   const conversation = await Conversation.create({
-    participants,
-    job: req.body.job || null
+    participants
   });
   res.status(201).json({ status: 'success', data: conversation });
 });

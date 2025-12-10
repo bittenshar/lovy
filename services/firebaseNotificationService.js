@@ -1,8 +1,30 @@
 const admin = require('firebase-admin');
+const { isFirebaseReady } = require('../src/services/firebase-admin');
 
 class FirebaseNotificationService {
   constructor() {
-    this.messaging = admin.messaging();
+    this.messaging = null;
+  }
+
+  /**
+   * Get messaging instance (lazy load)
+   */
+  getMessaging() {
+    if (!isFirebaseReady()) {
+      console.warn('⚠️  [FCM] Firebase Admin SDK not initialized. Notifications will fail.');
+      return null;
+    }
+    
+    if (!this.messaging) {
+      try {
+        this.messaging = admin.messaging();
+      } catch (error) {
+        console.error('❌ [FCM] Failed to get messaging instance:', error.message);
+        return null;
+      }
+    }
+    
+    return this.messaging;
   }
 
   /**
@@ -10,6 +32,11 @@ class FirebaseNotificationService {
    */
   async sendToDevice(fcmToken, title, body, data = {}) {
     try {
+      const messaging = this.getMessaging();
+      if (!messaging) {
+        throw new Error('Firebase messaging not available');
+      }
+
       const message = {
         notification: {
           title,
@@ -19,16 +46,14 @@ class FirebaseNotificationService {
         token: fcmToken,
       };
 
-      const response = await this.messaging.send(message);
+      const response = await messaging.send(message);
       console.log('✅ [FCM] Notification sent successfully:', response);
       return { success: true, messageId: response };
     } catch (error) {
       console.error('❌ [FCM] Error sending notification:', error);
       throw error;
     }
-  }
-
-  /**
+  }  /**
    * Send notifications to multiple devices
    */
   async sendToMultipleDevices(fcmTokens, title, body, data = {}) {
@@ -47,7 +72,7 @@ class FirebaseNotificationService {
         token,
       }));
 
-      const response = await this.messaging.sendAll(messages);
+      const response = await messaging.sendAll(messages);
       console.log(`✅ [FCM] Batch notifications sent: ${response.successCount} success, ${response.failureCount} failed`);
       
       // If there are failures, log them and potentially clean up invalid tokens
@@ -100,6 +125,11 @@ class FirebaseNotificationService {
    */
   async sendToTopic(topic, title, body, data = {}) {
     try {
+      const messaging = this.getMessaging();
+      if (!messaging) {
+        throw new Error('Firebase messaging not available');
+      }
+
       const message = {
         notification: {
           title,
@@ -109,7 +139,7 @@ class FirebaseNotificationService {
         topic,
       };
 
-      const response = await this.messaging.send(message);
+      const response = await messaging.send(message);
       console.log('✅ [FCM] Topic notification sent:', response);
       return { success: true, messageId: response };
     } catch (error) {
@@ -123,7 +153,12 @@ class FirebaseNotificationService {
    */
   async subscribeToTopic(fcmToken, topic) {
     try {
-      const response = await this.messaging.subscribeToTopic([fcmToken], topic);
+      const messaging = this.getMessaging();
+      if (!messaging) {
+        throw new Error('Firebase messaging not available');
+      }
+
+      const response = await messaging.subscribeToTopic([fcmToken], topic);
       console.log('✅ [FCM] Subscribed to topic:', topic);
       return { success: true, response };
     } catch (error) {
@@ -137,7 +172,12 @@ class FirebaseNotificationService {
    */
   async unsubscribeFromTopic(fcmToken, topic) {
     try {
-      const response = await this.messaging.unsubscribeFromTopic([fcmToken], topic);
+      const messaging = this.getMessaging();
+      if (!messaging) {
+        throw new Error('Firebase messaging not available');
+      }
+
+      const response = await messaging.unsubscribeFromTopic([fcmToken], topic);
       console.log('✅ [FCM] Unsubscribed from topic:', topic);
       return { success: true, response };
     } catch (error) {

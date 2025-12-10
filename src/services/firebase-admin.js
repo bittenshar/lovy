@@ -1,6 +1,7 @@
 /**
  * Firebase Admin SDK Initialization
  * Initializes Firebase Admin SDK with service account credentials
+ * Supports both file-based (local dev) and environment variable (production) approaches
  */
 
 const admin = require('firebase-admin');
@@ -18,8 +19,18 @@ function initializeFirebase() {
   }
 
   try {
-    const serviceAccountPath = path.join(__dirname, '../../firebase-service-account.json');
-    const serviceAccount = require(serviceAccountPath);
+    let serviceAccount;
+
+    // Try environment variable first (for Vercel/production)
+    if (process.env.FIREBASE_SERVICE_ACCOUNT) {
+      console.log('📝 Loading Firebase credentials from environment variable...');
+      serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
+    } else {
+      // Fall back to file-based approach (for local development)
+      console.log('📝 Loading Firebase credentials from file...');
+      const serviceAccountPath = path.join(__dirname, '../../firebase-service-account.json');
+      serviceAccount = require(serviceAccountPath);
+    }
 
     admin.initializeApp({
       credential: admin.credential.cert(serviceAccount),
@@ -33,6 +44,7 @@ function initializeFirebase() {
   } catch (error) {
     initError = error;
     console.error('❌ Failed to initialize Firebase Admin SDK:', error.message);
+    console.error('⚠️  Make sure FIREBASE_SERVICE_ACCOUNT environment variable is set in production');
     return null;
   }
 }

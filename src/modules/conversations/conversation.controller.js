@@ -135,7 +135,7 @@ exports.markConversationRead = catchAsync(async (req, res, next) => {
     return next(new AppError('Conversation not found', 404));
   }
   
-  conversation.unreadCounts.set(req.user._id.toString(), 0);
+  conversation.unreadCount.set(req.user._id.toString(), 0);
   await conversation.save();
   console.log('👁️  [CONV] Conversation marked as read');
   res.status(200).json({ status: 'success', data: conversation });

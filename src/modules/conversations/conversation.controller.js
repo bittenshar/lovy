@@ -64,7 +64,7 @@ exports.listMessages = catchAsync(async (req, res, next) => {
     return next(new AppError('Conversation not found', 404));
   }
   
-  const messages = await Message.find({ conversation: conversation._id }).sort({ createdAt: 1 });
+  const messages = await Message.find({ conversationId: conversation._id }).sort({ createdAt: 1 });
   console.log('📬 [MSG] Found', messages.length, 'messages');
   console.log('📬 [MSG] Messages:', JSON.stringify(messages, null, 2));
   res.status(200).json({ status: 'success', data: messages });

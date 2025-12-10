@@ -75,10 +75,14 @@ exports.sendMessage = catchAsync(async (req, res, next) => {
   if (!conversation || !conversation.participants.includes(req.user._id)) {
     return next(new AppError('Conversation not found', 404));
   }
+  // Get receiver ID (the other participant)
+  const receiverId = conversation.participants.find(p => p.toString() !== req.user._id.toString());
+  
   const message = await Message.create({
-    conversation: conversation._id,
-    sender: req.user._id,
-    body: req.body.body
+    conversationId: conversation._id,
+    senderId: req.user._id,
+    receiverId: receiverId,
+    text: req.body.body
   });
   conversation.lastMessageSnippet = req.body.body.slice(0, 120);
   conversation.lastMessageAt = new Date();

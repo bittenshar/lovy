@@ -10,11 +10,11 @@ exports.signup = catchAsync(async (req, res) => {
 });
 
 exports.login = catchAsync(async (req, res, next) => {
-  const { email, password } = req.body;
+  const { email, password, fcmToken } = req.body;
   if (!email || !password) {
     return next(new AppError('Email and password are required', 400));
   }
-  const data = await authService.login({ email, password });
+  const data = await authService.login({ email, password, fcmToken });
   await authService.issueAuthResponse(res, data, 200);
 });
 

@@ -3,7 +3,7 @@
  * Handles sending push notifications to user devices
  */
 
-const firebaseService = require('./firebase-notification.service');
+const { admin, isFirebaseReady } = require('./firebase-admin');
 const User = require('../modules/users/user.model');
 
 /**
@@ -15,7 +15,7 @@ const User = require('../modules/users/user.model');
  * @returns {object} - { successCount, failureCount, error }
  */
 async function sendNotificationToUser(userId, title, body, data = {}) {
-  if (!firebaseService || !firebaseService.initialized) {
+  if (!isFirebaseReady()) {
     console.log('❌ Firebase not initialized - skipping push notification');
     return { successCount: 0, failureCount: 0, skipped: true };
   }
@@ -38,8 +38,25 @@ async function sendNotificationToUser(userId, title, body, data = {}) {
       return { successCount: 0, failureCount: 0, noToken: true };
     }
 
-    // Send notification using the firebaseService
-    return await firebaseService.sendToDevices(tokens, { title, body, data });
+    const message = {
+      notification: { title, body },
+      data: {
+        ...data,
+        userId: userId.toString(),
+        timestamp: new Date().toISOString(),
+      },
+      tokens,
+    };
+
+    const response = await admin.messaging().sendMulticast(message);
+
+    console.log(`✅ FCM notification sent: ${response.successCount} success, ${response.failureCount} failed`);
+
+    return {
+      successCount: response.successCount,
+      failureCount: response.failureCount,
+      responses: response.responses,
+    };
   } catch (error) {
     console.error('❌ Error sending FCM notification:', error.message);
 
@@ -65,7 +82,7 @@ async function sendNotificationToUser(userId, title, body, data = {}) {
  * @returns {object} - Aggregated results
  */
 async function sendBulkNotifications(userIds, title, body, data = {}) {
-  if (!firebaseService || !firebaseService.initialized) {
+  if (!isFirebaseReady()) {
     return { totalSent: 0, totalFailed: 0, skipped: true };
   }
 
@@ -87,8 +104,18 @@ async function sendBulkNotifications(userIds, title, body, data = {}) {
       return { totalSent: 0, totalFailed: 0, noTokens: true };
     }
 
-    // Send using firebaseService
-    const response = await firebaseService.sendToDevices(allTokens, { title, body, data });
+    const message = {
+      notification: { title, body },
+      data: {
+        ...data,
+        timestamp: new Date().toISOString(),
+      },
+    };
+
+    const response = await admin.messaging().sendMulticast({
+      ...message,
+      tokens: allTokens,
+    });
 
     console.log(`✅ Bulk FCM sent: ${response.successCount}/${allTokens.length} successful`);
 

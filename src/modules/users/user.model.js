@@ -34,17 +34,13 @@ const userSchema = new mongoose.Schema(
     lastLoginAt: Date,
     passwordChangedAt: Date,
     // FCM (Firebase Cloud Messaging) fields
-    fcmToken: String,
-    platform: String,
-    fcmTokenUpdatedAt: Date,
-    // OneSignal fields
-    onesignalId: String,
-    onesignalPlatform: String,
-    onesignalDeviceInfo: {
-      type: Object,
-      default: {}
-    },
-    onesignalRegisteredAt: Date
+    fcmTokens: [{
+      token: String ,
+      platform: String,
+      active: { type: Boolean, default: true },
+      updatedAt: { type: Date, default: Date.now }
+    }],
+    
   },
   { timestamps: true }
 );

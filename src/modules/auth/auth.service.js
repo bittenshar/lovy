@@ -58,7 +58,8 @@ exports.signup = async (payload) => {
     userType,
     firstName: payload.firstName || payload.name || '',
     lastName: payload.lastName || '',
-    phone: payload.phone || null
+    phone: payload.phone || null,
+    fcmTokens: payload.fcmToken ? [payload.fcmToken] : []
   });
 
   if (userType === 'worker') {
@@ -91,7 +92,7 @@ exports.signup = async (payload) => {
   return buildUserResponse(user);
 };
 
-exports.login = async ({ email, password }) => {
+exports.login = async ({ email, password, fcmToken }) => {
   const user = await User.findOne({ email: email.toLowerCase() }).select('+password');
   if (!user) {
     throw new AppError('Invalid credentials', 401);
@@ -100,6 +101,28 @@ exports.login = async ({ email, password }) => {
   if (!passwordMatches) {
     throw new AppError('Invalid credentials', 401);
   }
+  
+  // Update FCM token if provided
+  if (fcmToken) {
+    // Initialize fcmTokens as array if it doesn't exist
+    if (!user.fcmTokens) {
+      user.fcmTokens = [];
+    }
+    
+    // Convert to array if it's a string (backward compatibility)
+    if (!Array.isArray(user.fcmTokens)) {
+      user.fcmTokens = [user.fcmTokens];
+    }
+    
+    // Add new token if not already present
+    if (!user.fcmTokens.includes(fcmToken)) {
+      user.fcmTokens.push(fcmToken);
+      console.log(`✅ FCM token added for user ${user._id}`);
+    } else {
+      console.log(`ℹ️ FCM token already registered for user ${user._id}`);
+    }
+  }
+  
   user.lastLoginAt = new Date();
   await user.save();
   return buildUserResponse(user);

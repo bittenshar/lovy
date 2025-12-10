@@ -51,22 +51,33 @@ exports.createConversation = catchAsync(async (req, res, next) => {
 });
 
 exports.listMessages = catchAsync(async (req, res, next) => {
-  console.log('📬 [MSG] Getting messages for conversation:', req.params.conversationId);
-  const conversation = await Conversation.findById(req.params.conversationId);
+  const conversationId = req.params.conversationId;
+  console.log('═══════════════════════════════════════════════════════');
+  console.log('📬 [MSG] GET /conversations/:id/messages');
+  console.log('📬 [MSG] Conversation ID:', conversationId);
+  console.log('📬 [MSG] User ID:', req.user._id);
+  
+  const conversation = await Conversation.findById(conversationId);
+  console.log('📬 [MSG] Conversation found:', !!conversation);
+  console.log('📬 [MSG] Conversation data:', JSON.stringify(conversation, null, 2));
   
   if (!conversation) {
-    console.log('❌ [MSG] Conversation not found:', req.params.conversationId);
+    console.log('❌ [MSG] Conversation not found:', conversationId);
     return next(new AppError('Conversation not found', 404));
   }
   
   if (!conversation.participants.includes(req.user._id)) {
     console.log('❌ [MSG] User not participant of conversation');
+    console.log('📬 [MSG] Participants:', conversation.participants);
+    console.log('📬 [MSG] User ID:', req.user._id);
     return next(new AppError('Conversation not found', 404));
   }
   
+  console.log('📬 [MSG] Querying messages with: { conversationId:', conversationId, '}');
   const messages = await Message.find({ conversationId: conversation._id }).sort({ createdAt: 1 });
   console.log('📬 [MSG] Found', messages.length, 'messages');
-  console.log('📬 [MSG] Messages:', JSON.stringify(messages, null, 2));
+  console.log('📬 [MSG] First message:', messages[0]);
+  console.log('═══════════════════════════════════════════════════════');
   res.status(200).json({ status: 'success', data: messages });
 });
 

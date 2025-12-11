@@ -30,7 +30,7 @@ async function sendNotificationToUser(userId, title, body, data = {}) {
   try {
     // Fetch user and their FCM tokens
     console.log(`🔔 [FCM] Fetching user ${userId} and their FCM tokens...`);
-    const user = await User.findById(userId).select('fcmToken platform');
+    const user = await User.findById(userId).select('fcmTokens fcmToken platform');
 
     if (!user) {
       console.log(`❌ [FCM] User not found: ${userId}`);
@@ -39,23 +39,30 @@ async function sendNotificationToUser(userId, title, body, data = {}) {
     }
 
     console.log(`🔔 [FCM] User found: ${user._id}`);
-    console.log(`🔔 [FCM] FCM token exists: ${!!user.fcmToken}`);
+    console.log(`🔔 [FCM] FCM tokens (array): ${Array.isArray(user.fcmTokens) ? user.fcmTokens.length + ' token(s)' : 'Not an array'}`);
+    console.log(`🔔 [FCM] FCM token (single): ${user.fcmToken ? 'exists' : 'null'}`);
     
-    if (!user.fcmToken) {
-      console.log(`⚠️  [FCM] No FCM token found for user ${userId}`);
-      console.log('🔔 [FCM] ===== SEND NOTIFICATION END =====\n');
-      return { successCount: 0, failureCount: 0, noToken: true };
+    // Get tokens from either fcmTokens array or single fcmToken field
+    let tokens = [];
+    if (Array.isArray(user.fcmTokens) && user.fcmTokens.length > 0) {
+      tokens = user.fcmTokens.filter(t => {
+        // Handle both string tokens and object tokens
+        const tokenValue = typeof t === 'string' ? t : t.token;
+        return tokenValue && typeof tokenValue === 'string' && tokenValue.trim().length > 0;
+      }).map(t => typeof t === 'string' ? t : t.token);
+      console.log(`🔔 [FCM] Using tokens from fcmTokens array: ${tokens.length}`);
+    } else if (user.fcmToken) {
+      tokens = Array.isArray(user.fcmToken) 
+        ? user.fcmToken.filter(token => token && typeof token === 'string' && token.trim().length > 0)
+        : [user.fcmToken];
+      console.log(`🔔 [FCM] Using tokens from fcmToken field: ${tokens.length}`);
     }
 
-    const tokens = Array.isArray(user.fcmToken) 
-      ? user.fcmToken.filter(token => token && typeof token === 'string' && token.trim().length > 0)
-      : [user.fcmToken];
-
-    console.log(`🔔 [FCM] Valid FCM tokens count: ${tokens.length}`);
+    console.log(`🔔 [FCM] Total valid FCM tokens: ${tokens.length}`);
     if (tokens.length > 0) {
       console.log(`🔔 [FCM] First token (truncated): ${tokens[0].substring(0, 20)}...`);
     }
-
+    
     if (tokens.length === 0) {
       console.log(`⚠️  [FCM] No valid FCM tokens for user ${userId}`);
       console.log('🔔 [FCM] ===== SEND NOTIFICATION END =====\n');

@@ -217,7 +217,7 @@ exports.sendMessage = catchAsync(async (req, res, next) => {
       
       const notificationPayload = {
         recipient: recipientId,
-        type: 'chat',
+        type: 'new_message',  // Valid enum value from notification schema
         priority: 'medium',
         title: `New message from ${senderName}`,
         message: req.body.body.slice(0, 100) + (req.body.body.length > 100 ? '...' : ''),

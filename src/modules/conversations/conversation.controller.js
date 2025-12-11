@@ -73,8 +73,8 @@ exports.listMessages = catchAsync(async (req, res, next) => {
     return next(new AppError('Conversation not found', 404));
   }
   
-  console.log('📬 [MSG] Querying messages with: { conversationId:', conversationId, '}');
-  const messages = await Message.find({ conversationId: conversation._id }).sort({ createdAt: 1 });
+  console.log('📬 [MSG] Querying messages with: { conversation:', conversationId, '}');
+  const messages = await Message.find({ conversation: conversation._id }).sort({ createdAt: 1 });
   console.log('📬 [MSG] Found', messages.length, 'messages');
   console.log('📬 [MSG] First message:', messages[0]);
   console.log('═══════════════════════════════════════════════════════');
@@ -82,55 +82,88 @@ exports.listMessages = catchAsync(async (req, res, next) => {
 });
 
 exports.sendMessage = catchAsync(async (req, res, next) => {
+  console.log('📨 [MSG] Sending message');
+  console.log('📨 [MSG] Conversation ID:', req.params.conversationId);
+  console.log('📨 [MSG] User ID:', req.user._id);
+  console.log('📨 [MSG] Request body:', req.body);
+
   const conversation = await Conversation.findById(req.params.conversationId);
   if (!conversation || !conversation.participants.includes(req.user._id)) {
+    console.log('❌ [MSG] Conversation not found or user not participant');
     return next(new AppError('Conversation not found', 404));
   }
+
   // Get receiver ID (the other participant)
   const receiverId = conversation.participants.find(p => p.toString() !== req.user._id.toString());
-  
+  console.log('📨 [MSG] Receiver ID:', receiverId);
+  console.log('📨 [MSG] Message text:', req.body.body);
+
+  // Create the message using the correct field names from schema
   const message = await Message.create({
-    conversationId: conversation._id,
-    senderId: req.user._id,
-    receiverId: receiverId,
-    text: req.body.body
+    conversation: conversation._id,
+    sender: req.user._id,
+    body: req.body.body
   });
-  conversation.lastMessageSnippet = req.body.body.slice(0, 120);
-  conversation.lastMessageAt = new Date();
+  console.log('✅ [MSG] Message created successfully:', message._id);
+  console.log('📨 [MSG] Message content:', message);
+
+  // Update conversation
+  conversation.lastMessage = message._id;
+  conversation.lastMessageText = req.body.body.slice(0, 120);
+  conversation.lastMessageSenderId = req.user._id;
+  conversation.lastMessageTime = new Date();
   conversation.updatedAt = new Date();
-  conversation.participants.forEach((participant) => {
-    const key = participant.toString();
-    const unread = conversation.unreadCounts.get(key) || 0;
-    conversation.unreadCounts.set(key, key === req.user._id.toString() ? 0 : unread + 1);
-  });
+
+  // Update unread counts - reset for sender, increment for receiver
+  const unreadCountMap = conversation.unreadCount || new Map();
+  
+  // Reset sender's unread count
+  unreadCountMap.set(req.user._id.toString(), 0);
+  
+  // Increment receiver's unread count
+  const receiverKey = receiverId.toString();
+  const currentUnread = unreadCountMap.get(receiverKey) || 0;
+  unreadCountMap.set(receiverKey, currentUnread + 1);
+  
+  conversation.unreadCount = unreadCountMap;
+  console.log('📨 [MSG] Updated unread counts:', Object.fromEntries(unreadCountMap));
+
   await conversation.save();
+  console.log('✅ [MSG] Conversation updated successfully');
+
+  // Populate sender details for notification
+  await message.populate('sender', 'firstName lastName email');
+  const senderName = message.sender?.firstName ? 
+    `${message.sender.firstName} ${message.sender.lastName || ''}`.trim() : 
+    message.sender?.email || 'Unknown';
 
   // Send notification to other participants
   const recipients = conversation.participants.filter(p => p.toString() !== req.user._id.toString());
-  
-  // Get sender name for notification
-  await message.populate('sender', 'firstName lastName email');
-  const senderName = message.sender.firstName ? 
-    `${message.sender.firstName} ${message.sender.lastName || ''}`.trim() : 
-    message.sender.email;
+  console.log('📨 [MSG] Sending notification to recipients:', recipients);
 
   // Send notification to each recipient
   for (const recipientId of recipients) {
-    await notificationService.sendSafeNotification({
-      recipient: recipientId,
-      type: 'message',
-      priority: 'medium',
-      title: `New message from ${senderName}`,
-      message: req.body.body.slice(0, 100) + (req.body.body.length > 100 ? '...' : ''),
-      metadata: {
-        conversationId: conversation._id.toString(),
-        messageId: message._id.toString(),
-        senderId: req.user._id.toString(),
-        senderName: senderName,
-        messagePreview: req.body.body.slice(0, 50)
-      },
-      senderUserId: req.user._id
-    });
+    try {
+      await notificationService.sendSafeNotification({
+        recipient: recipientId,
+        type: 'chat',
+        priority: 'medium',
+        title: `New message from ${senderName}`,
+        message: req.body.body.slice(0, 100) + (req.body.body.length > 100 ? '...' : ''),
+        metadata: {
+          type: 'chat',
+          conversationId: conversation._id.toString(),
+          messageId: message._id.toString(),
+          senderId: req.user._id.toString(),
+          senderName: senderName,
+          messagePreview: req.body.body.slice(0, 50)
+        },
+        senderUserId: req.user._id
+      });
+      console.log('✅ [MSG] Notification sent to:', recipientId);
+    } catch (notificationError) {
+      console.log('⚠️  [MSG] Failed to send notification:', notificationError.message);
+    }
   }
 
   res.status(201).json({ status: 'success', data: message });

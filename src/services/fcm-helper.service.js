@@ -30,7 +30,7 @@ async function sendNotificationToUser(userId, title, body, data = {}) {
     }
 
     const tokens = Array.isArray(user.fcmToken) 
-      ? user.fcmToken.filter(token => token && token.length > 50) // Filter valid tokens
+      ? user.fcmToken.filter(token => token && typeof token === 'string' && token.trim().length > 0)
       : [user.fcmToken];
 
     if (tokens.length === 0) {
@@ -38,17 +38,18 @@ async function sendNotificationToUser(userId, title, body, data = {}) {
       return { successCount: 0, failureCount: 0, noToken: true };
     }
 
-    const message = {
+    // Create individual message objects for each token (Firebase requirement)
+    const messages = tokens.map(token => ({
       notification: { title, body },
       data: {
         ...data,
         userId: userId.toString(),
         timestamp: new Date().toISOString(),
       },
-      tokens,
-    };
+      token,
+    }));
 
-    const response = await admin.messaging().sendMulticast(message);
+    const response = await admin.messaging().sendAll(messages);
 
     console.log(`✅ FCM notification sent: ${response.successCount} success, ${response.failureCount} failed`);
 
@@ -95,7 +96,7 @@ async function sendBulkNotifications(userIds, title, body, data = {}) {
     users.forEach(user => {
       if (user.fcmToken) {
         const tokens = Array.isArray(user.fcmToken) ? user.fcmToken : [user.fcmToken];
-        allTokens.push(...tokens.filter(t => t && t.length > 50));
+        allTokens.push(...tokens.filter(t => t && typeof t === 'string' && t.trim().length > 0));
       }
     });
 
@@ -104,18 +105,17 @@ async function sendBulkNotifications(userIds, title, body, data = {}) {
       return { totalSent: 0, totalFailed: 0, noTokens: true };
     }
 
-    const message = {
+    // Create individual message objects for each token (Firebase requirement)
+    const messages = allTokens.map(token => ({
       notification: { title, body },
       data: {
         ...data,
         timestamp: new Date().toISOString(),
       },
-    };
+      token,
+    }));
 
-    const response = await admin.messaging().sendMulticast({
-      ...message,
-      tokens: allTokens,
-    });
+    const response = await admin.messaging().sendAll(messages);
 
     console.log(`✅ Bulk FCM sent: ${response.successCount}/${allTokens.length} successful`);
 

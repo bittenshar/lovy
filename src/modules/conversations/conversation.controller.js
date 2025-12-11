@@ -10,8 +10,18 @@ exports.listConversations = catchAsync(async (req, res) => {
   const conversations = await Conversation.find(filter)
     .sort({ updatedAt: -1 });
   console.log('📥 [CONV] Found', conversations.length, 'conversations');
-  console.log('📥 [CONV] Conversations:', JSON.stringify(conversations, null, 2));
-  res.status(200).json({ status: 'success', data: conversations });
+  
+  // Convert to plain objects for JSON serialization (Maps can't be serialized)
+  const conversationsObj = conversations.map(conv => {
+    const obj = conv.toObject();
+    if (obj.unreadCount instanceof Map) {
+      obj.unreadCount = Object.fromEntries(obj.unreadCount);
+    }
+    return obj;
+  });
+  
+  console.log('📥 [CONV] Conversations:', JSON.stringify(conversationsObj, null, 2));
+  res.status(200).json({ status: 'success', data: conversationsObj });
 });
 
 exports.createConversation = catchAsync(async (req, res, next) => {
@@ -34,9 +44,16 @@ exports.createConversation = catchAsync(async (req, res, next) => {
 
   if (existingConversation) {
     console.log('📝 [CONV] Existing conversation found:', existingConversation._id);
+    
+    // Convert to plain object for JSON serialization (Maps can't be serialized)
+    const conversationObj = existingConversation.toObject();
+    if (conversationObj.unreadCount instanceof Map) {
+      conversationObj.unreadCount = Object.fromEntries(conversationObj.unreadCount);
+    }
+    
     return res.status(200).json({ 
       status: 'success', 
-      data: existingConversation,
+      data: conversationObj,
       message: 'Existing conversation found'
     });
   }
@@ -46,8 +63,14 @@ exports.createConversation = catchAsync(async (req, res, next) => {
     participants
   });
   console.log('📝 [CONV] Conversation created successfully:', conversation._id);
-  console.log('📝 [CONV] Full conversation object:', JSON.stringify(conversation, null, 2));
-  res.status(201).json({ status: 'success', data: conversation });
+  
+  // Convert to plain object for JSON serialization (Maps can't be serialized)
+  const conversationObj = conversation.toObject();
+  if (conversationObj.unreadCount instanceof Map) {
+    conversationObj.unreadCount = Object.fromEntries(conversationObj.unreadCount);
+  }
+  console.log('📝 [CONV] Full conversation object:', JSON.stringify(conversationObj, null, 2));
+  res.status(201).json({ status: 'success', data: conversationObj });
 });
 
 exports.listMessages = catchAsync(async (req, res, next) => {

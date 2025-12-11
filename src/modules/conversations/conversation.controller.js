@@ -130,12 +130,21 @@ exports.listMessages = catchAsync(async (req, res, next) => {
 });
 
 exports.sendMessage = catchAsync(async (req, res, next) => {
+  console.log('\n═══════════════════════════════════════════════════════');
+  console.log('📨 [MSG] ===== SEND MESSAGE START =====');
   console.log('📨 [MSG] Sending message');
   console.log('📨 [MSG] Conversation ID:', req.params.conversationId);
-  console.log('📨 [MSG] User ID:', req.user._id);
+  console.log('📨 [MSG] Sender User ID:', req.user._id);
+  console.log('📨 [MSG] Sender Email:', req.user?.email);
   console.log('📨 [MSG] Request body:', req.body);
 
   const conversation = await Conversation.findById(req.params.conversationId);
+  console.log('📨 [MSG] Conversation found:', !!conversation);
+  if (conversation) {
+    console.log('📨 [MSG] Conversation participants:', conversation.participants);
+    console.log('📨 [MSG] Sender is participant:', conversation.participants.includes(req.user._id));
+  }
+  
   if (!conversation || !conversation.participants.includes(req.user._id)) {
     console.log('❌ [MSG] Conversation not found or user not participant');
     return next(new AppError('Conversation not found', 404));
@@ -145,6 +154,7 @@ exports.sendMessage = catchAsync(async (req, res, next) => {
   const receiverId = conversation.participants.find(p => p.toString() !== req.user._id.toString());
   console.log('📨 [MSG] Receiver ID:', receiverId);
   console.log('📨 [MSG] Message text:', req.body.body);
+  console.log('📨 [MSG] Message length:', req.body.body?.length);
 
   // Create the message using the correct field names from schema
   const message = await Message.create({
@@ -153,7 +163,13 @@ exports.sendMessage = catchAsync(async (req, res, next) => {
     body: req.body.body
   });
   console.log('✅ [MSG] Message created successfully:', message._id);
-  console.log('📨 [MSG] Message content:', message);
+  console.log('📨 [MSG] Message object:', {
+    id: message._id,
+    conversation: message.conversation,
+    sender: message.sender,
+    body: message.body.substring(0, 50) + (message.body.length > 50 ? '...' : ''),
+    createdAt: message.createdAt
+  });
 
   // Update conversation
   conversation.lastMessage = message._id;
@@ -161,9 +177,11 @@ exports.sendMessage = catchAsync(async (req, res, next) => {
   conversation.lastMessageSenderId = req.user._id;
   conversation.lastMessageTime = new Date();
   conversation.updatedAt = new Date();
+  console.log('📨 [MSG] Updated conversation metadata');
 
   // Update unread counts - reset for sender, increment for receiver
   const unreadCountMap = conversation.unreadCount || new Map();
+  console.log('📨 [MSG] Current unreadCount:', Object.fromEntries(unreadCountMap));
   
   // Reset sender's unread count
   unreadCountMap.set(req.user._id.toString(), 0);
@@ -177,22 +195,27 @@ exports.sendMessage = catchAsync(async (req, res, next) => {
   console.log('📨 [MSG] Updated unread counts:', Object.fromEntries(unreadCountMap));
 
   await conversation.save();
-  console.log('✅ [MSG] Conversation updated successfully');
+  console.log('✅ [MSG] Conversation saved successfully');
 
   // Populate sender details for notification
   await message.populate('sender', 'firstName lastName email');
   const senderName = message.sender?.firstName ? 
     `${message.sender.firstName} ${message.sender.lastName || ''}`.trim() : 
     message.sender?.email || 'Unknown';
+  console.log('📨 [MSG] Sender name for notification:', senderName);
 
   // Send notification to other participants
   const recipients = conversation.participants.filter(p => p.toString() !== req.user._id.toString());
-  console.log('📨 [MSG] Sending notification to recipients:', recipients);
+  console.log('📨 [MSG] Recipients count:', recipients.length);
+  console.log('📨 [MSG] Recipient IDs:', recipients.map(r => r.toString()));
 
   // Send notification to each recipient
   for (const recipientId of recipients) {
     try {
-      await notificationService.sendSafeNotification({
+      console.log('\n📨 [MSG] ===== FCM NOTIFICATION START =====');
+      console.log('📨 [MSG] Sending FCM notification to recipient:', recipientId);
+      
+      const notificationPayload = {
         recipient: recipientId,
         type: 'chat',
         priority: 'medium',
@@ -207,13 +230,33 @@ exports.sendMessage = catchAsync(async (req, res, next) => {
           messagePreview: req.body.body.slice(0, 50)
         },
         senderUserId: req.user._id
+      };
+      
+      console.log('📨 [MSG] Notification payload:', {
+        recipient: notificationPayload.recipient.toString(),
+        type: notificationPayload.type,
+        title: notificationPayload.title,
+        messagePreview: notificationPayload.message.substring(0, 50),
+        conversationId: notificationPayload.metadata.conversationId,
+        messageId: notificationPayload.metadata.messageId
       });
-      console.log('✅ [MSG] Notification sent to:', recipientId);
+      
+      const result = await notificationService.sendSafeNotification(notificationPayload);
+      
+      console.log('✅ [MSG] FCM notification sent successfully to:', recipientId);
+      console.log('📨 [MSG] Notification result:', result?._id || 'Success');
+      console.log('📨 [MSG] ===== FCM NOTIFICATION END =====\n');
+      
     } catch (notificationError) {
-      console.log('⚠️  [MSG] Failed to send notification:', notificationError.message);
+      console.log('⚠️  [MSG] Failed to send FCM notification to', recipientId);
+      console.log('⚠️  [MSG] Error:', notificationError.message);
+      console.log('⚠️  [MSG] Stack:', notificationError.stack);
     }
   }
 
+  console.log('📨 [MSG] ===== SEND MESSAGE END =====');
+  console.log('═══════════════════════════════════════════════════════\n');
+  
   res.status(201).json({ status: 'success', data: message });
 });
 

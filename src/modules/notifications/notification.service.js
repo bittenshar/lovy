@@ -97,12 +97,18 @@ const createNotification = async ({
     payload.actionUrl = actionUrl;
   }
 
+  console.log('\n🔔 [NOTIF] Creating notification in database...');
   // Create notification in database
   const notification = await Notification.create(payload);
+  console.log(`✅ [NOTIF] Notification created in DB: ${notification._id}`);
+  console.log(`🔔 [NOTIF] Notification type: ${payload.type}, priority: ${payload.priority}`);
+  console.log(`🔔 [NOTIF] Recipient: ${targetId}`);
 
   // Send Firebase push notification asynchronously (non-blocking)
+  console.log(`🔔 [NOTIF] Scheduling async FCM send for recipient: ${targetId}`);
   setImmediate(async () => {
     try {
+      console.log(`🔔 [NOTIF] Async FCM send started for recipient: ${targetId}`);
       await sendNotificationToUser(
         targetId,
         payload.title,
@@ -115,8 +121,9 @@ const createNotification = async ({
           metadata: JSON.stringify(payload.metadata || {}),
         }
       );
+      console.log(`✅ [NOTIF] Async FCM send completed for recipient: ${targetId}`);
     } catch (error) {
-      console.error(`❌ Error sending push notification for user ${targetId}:`, error.message);
+      console.error(`❌ [NOTIF] Error sending push notification for user ${targetId}:`, error.message);
       // Don't throw - notification is already successfully stored in DB
     }
   });

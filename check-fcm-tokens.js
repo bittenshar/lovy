@@ -1,92 +1,35 @@
-#!/usr/bin/env node
-
-/**
- * Quick FCM Token Debug Script
- * Check if tokens are being registered in the database
- */
-
 const mongoose = require('mongoose');
-require('dotenv').config({ path: __dirname + '/.env' });
+const User = require('./src/modules/users/user.model');
 
-async function checkTokens() {
-  try {
-    console.log('🔌 Connecting to MongoDB...');
-    await mongoose.connect(process.env.MONGODB_URI || process.env.MONGO_URI);
-    console.log('✅ Connected to MongoDB');
-
-    const User = require('./src/modules/users/user.model');
-    const FCMToken = require('./models/fcmToken');
-
-    // Get all users with FCM tokens
-    console.log('\n📱 Users with FCM tokens in User collection:');
-    const usersWithTokens = await User.find(
-      { fcmToken: { $exists: true, $ne: null } },
-      'email fcmToken platform fcmTokenUpdatedAt'
-    ).limit(5);
-
-    if (usersWithTokens.length === 0) {
-      console.log('   ❌ No users with FCM tokens found');
-    } else {
-      usersWithTokens.forEach(user => {
-        console.log(`   📧 ${user.email}`);
-        console.log(`      Token: ${user.fcmToken.substring(0, 30)}...`);
-        console.log(`      Platform: ${user.platform}`);
-        console.log(`      Updated: ${user.fcmTokenUpdatedAt}`);
-      });
+mongoose.connect('mongodb://127.0.0.1:27017/lovy')
+  .then(async () => {
+    console.log('✅ Connected to MongoDB\n');
+    
+    const userIds = [
+      '69307854e324845ecb080759',
+      '6936c8951372bc292e6db0fb'
+    ];
+    
+    for (const userId of userIds) {
+      const user = await User.findById(userId).select('email fcmTokens');
+      
+      console.log(`👤 User: ${user?.email} (${userId})`);
+      console.log(`   fcmTokens count: ${user?.fcmTokens?.length || 0}`);
+      
+      if (user?.fcmTokens && user.fcmTokens.length > 0) {
+        user.fcmTokens.forEach((t, idx) => {
+          console.log(`   [${idx + 1}] Platform: ${t.platform}, Active: ${t.active !== false}`);
+          console.log(`       Token: ${t.token?.substring(0, 40)}...`);
+        });
+      } else {
+        console.log('   ❌ No FCM tokens registered!');
+      }
+      console.log('');
     }
-
-    // Get all FCM tokens
-    console.log('\n📱 All FCM tokens in FCMToken collection:');
-    const allTokens = await FCMToken.find({})
-      .populate('userId', 'email')
-      .limit(5);
-
-    if (allTokens.length === 0) {
-      console.log('   ❌ No FCM tokens found');
-    } else {
-      allTokens.forEach(doc => {
-        console.log(`   📧 ${doc.userId?.email || 'Unknown'}`);
-        console.log(`      Token: ${doc.fcmToken.substring(0, 30)}...`);
-        console.log(`      Device: ${doc.deviceName} (${doc.deviceId})`);
-        console.log(`      Active: ${doc.isActive}`);
-        console.log(`      Last Used: ${doc.lastUsed}`);
-      });
-    }
-
-    // Count stats
-    console.log('\n📊 Statistics:');
-    const userCount = await User.countDocuments({ fcmToken: { $exists: true, $ne: null } });
-    const tokenCount = await FCMToken.countDocuments({ isActive: true });
-    const inactiveCount = await FCMToken.countDocuments({ isActive: false });
-
-    console.log(`   Users with tokens: ${userCount}`);
-    console.log(`   Active FCM tokens: ${tokenCount}`);
-    console.log(`   Inactive FCM tokens: ${inactiveCount}`);
-
-    // Find users WITHOUT tokens
-    console.log('\n❌ Users WITHOUT FCM tokens (can\'t receive notifications):');
-    const usersWithoutTokens = await User.find(
-      { fcmToken: { $exists: false } },
-      'email createdAt'
-    ).limit(5);
-
-    if (usersWithoutTokens.length === 0) {
-      console.log('   ✅ All users have tokens!');
-    } else {
-      usersWithoutTokens.forEach(user => {
-        console.log(`   📧 ${user.email} (created: ${user.createdAt})`);
-      });
-    }
-
-    console.log('\n💡 Solution: Users need to log in with the Flutter app to register their token');
-    console.log('   After login, they will receive notifications.');
-
-    await mongoose.connection.close();
-    console.log('\n✅ Done');
-  } catch (error) {
-    console.error('❌ Error:', error.message);
+    
+    process.exit(0);
+  })
+  .catch(err => {
+    console.error('❌ Error:', err.message);
     process.exit(1);
-  }
-}
-
-checkTokens();
+  });

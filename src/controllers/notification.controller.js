@@ -330,17 +330,8 @@ exports.registerFCMToken = async (req, res) => {
       });
     }
 
-    // Save token to database
-    const user = await User.findByIdAndUpdate(
-      userId,
-      {
-        fcmToken: fcmToken.trim(),
-        platform: platform || 'android',
-        fcmTokenUpdatedAt: new Date(),
-      },
-      { new: true, runValidators: true }
-    );
-
+    // Get existing user first
+    const user = await User.findById(userId);
     if (!user) {
       console.warn('⚠️  [FCM] User not found');
       return res.status(404).json({
@@ -349,9 +340,36 @@ exports.registerFCMToken = async (req, res) => {
       });
     }
 
+    // Check if this token already exists
+    const tokenString = fcmToken.trim();
+    const existingTokenIndex = user.fcmTokens.findIndex(t => t.token === tokenString);
+
+    if (existingTokenIndex !== -1) {
+      // Update existing token
+      console.log('🔔 [FCM] Token already exists, updating...');
+      user.fcmTokens[existingTokenIndex] = {
+        token: tokenString,
+        platform: platform || 'android',
+        active: true,
+        updatedAt: new Date()
+      };
+    } else {
+      // Add new token
+      console.log('🔔 [FCM] Adding new token to user');
+      user.fcmTokens.push({
+        token: tokenString,
+        platform: platform || 'android',
+        active: true,
+        updatedAt: new Date()
+      });
+    }
+
+    // Save updated user
+    await user.save();
     console.log(`✅ [FCM] Token registered for user ${userId}`);
     console.log(`   📊 User: ${user.email}`);
-    console.log(`   ⏰ Updated at: ${user.fcmTokenUpdatedAt}`);
+    console.log(`   ⏰ Updated at: ${new Date().toISOString()}`);
+    console.log(`   📍 Total tokens for user: ${user.fcmTokens.length}`);
 
     return res.json({
       success: true,
@@ -391,7 +409,7 @@ exports.getUserTokens = async (req, res) => {
       });
     }
 
-    const user = await User.findById(userId).select('email fcmToken platform fcmTokenUpdatedAt');
+    const user = await User.findById(userId).select('email fcmTokens');
 
     if (!user) {
       return res.status(404).json({
@@ -400,17 +418,22 @@ exports.getUserTokens = async (req, res) => {
       });
     }
 
-    console.log(`✅ [FCM] Found token for user ${userId}`);
+    console.log(`✅ [FCM] Found ${user.fcmTokens?.length || 0} token(s) for user ${userId}`);
+
+    const tokens = (user.fcmTokens || []).map(t => ({
+      token: t.token ? `${t.token.substring(0, 40)}...${t.token.substring(t.token.length - 10)}` : null,
+      platform: t.platform || 'unknown',
+      active: t.active !== false,
+      updatedAt: t.updatedAt
+    }));
 
     return res.json({
       success: true,
       data: {
         userId,
         email: user.email,
-        hasToken: !!user.fcmToken,
-        token: user.fcmToken ? `${user.fcmToken.substring(0, 40)}...${user.fcmToken.substring(user.fcmToken.length - 10)}` : null,
-        platform: user.platform || null,
-        updatedAt: user.fcmTokenUpdatedAt || null,
+        tokenCount: tokens.length,
+        tokens: tokens,
       },
     });
   } catch (error) {
@@ -455,26 +478,38 @@ exports.unregisterFCMToken = async (req, res) => {
       });
     }
 
-    if (!user.fcmToken) {
-      console.warn(`⚠️  [FCM] No token found for user ${userId}`);
+    let tokensRemoved = 0;
+
+    if (fcmToken) {
+      // Remove specific token
+      const tokenString = fcmToken.trim();
+      const initialLength = user.fcmTokens?.length || 0;
+      user.fcmTokens = (user.fcmTokens || []).filter(t => t.token !== tokenString);
+      tokensRemoved = initialLength - (user.fcmTokens?.length || 0);
+      console.log(`🗑️  [FCM] Removed ${tokensRemoved} specific token(s)`);
+    } else {
+      // Remove all tokens
+      tokensRemoved = user.fcmTokens?.length || 0;
+      user.fcmTokens = [];
+      console.log(`🗑️  [FCM] Removed all ${tokensRemoved} token(s)`);
+    }
+
+    if (tokensRemoved === 0) {
+      console.warn(`⚠️  [FCM] No matching token found for user ${userId}`);
       return res.json({
         success: true,
-        message: 'No token to remove',
+        message: 'No matching token to remove',
         data: { tokensRemoved: 0 },
       });
     }
 
-    // Remove token from database
-    user.fcmToken = null;
-    user.platform = null;
     await user.save();
-
-    console.log(`✅ [FCM] Token removed for user ${userId}`);
+    console.log(`✅ [FCM] ${tokensRemoved} token(s) removed for user ${userId}`);
 
     return res.json({
       success: true,
-      message: 'Token removed successfully',
-      data: { tokensRemoved: 1 },
+      message: `${tokensRemoved} token(s) removed successfully`,
+      data: { tokensRemoved },
     });
   } catch (error) {
     console.error('❌ [FCM] Error unregistering token:', error.message);

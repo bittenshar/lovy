@@ -79,14 +79,15 @@ exports.signup = async (payload) => {
       phone: payload.phone || null
     });
 
-    const defaultBusiness = await createDefaultBusiness({
-      employerId: user._id,
-      companyName
-    });
-    profile.defaultBusiness = defaultBusiness._id;
-    await profile.save();
-    user.selectedBusiness = defaultBusiness._id;
-    await user.save();
+    // Skip automatic business creation - let user create businesses manually
+    // const defaultBusiness = await createDefaultBusiness({
+    //   employerId: user._id,
+    //   companyName
+    // });
+    // profile.defaultBusiness = defaultBusiness._id;
+    // await profile.save();
+    // user.selectedBusiness = defaultBusiness._id;
+    // await user.save();
   }
 
   return buildUserResponse(user);

@@ -1,5 +1,5 @@
 const Conversation = require('../../../models/conversation');
-const Message = require('../../../models/message');
+const Message = require('./message.model');
 const catchAsync = require('../../shared/utils/catchAsync');
 const AppError = require('../../shared/utils/appError');
 const notificationService = require('../notifications/notification.service');

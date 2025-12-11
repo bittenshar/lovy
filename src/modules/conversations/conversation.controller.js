@@ -11,11 +11,20 @@ exports.listConversations = catchAsync(async (req, res) => {
     .sort({ updatedAt: -1 });
   console.log('📥 [CONV] Found', conversations.length, 'conversations');
   
-  // Convert to plain objects for JSON serialization (Maps can't be serialized)
+  // Convert Mongoose documents to plain objects
   const conversationsObj = conversations.map(conv => {
     const obj = conv.toObject();
-    if (obj.unreadCount instanceof Map) {
-      obj.unreadCount = Object.fromEntries(obj.unreadCount);
+    // Handle Mongoose Map type - convert to plain object
+    if (obj.unreadCount) {
+      const unreadMap = {};
+      if (obj.unreadCount instanceof Map) {
+        for (const [key, value] of obj.unreadCount) {
+          unreadMap[key] = value;
+        }
+      } else if (typeof obj.unreadCount === 'object') {
+        Object.assign(unreadMap, obj.unreadCount);
+      }
+      obj.unreadCount = unreadMap;
     }
     return obj;
   });
@@ -45,10 +54,20 @@ exports.createConversation = catchAsync(async (req, res, next) => {
   if (existingConversation) {
     console.log('📝 [CONV] Existing conversation found:', existingConversation._id);
     
-    // Convert to plain object for JSON serialization (Maps can't be serialized)
+    // Convert to plain object for JSON serialization
     const conversationObj = existingConversation.toObject();
-    if (conversationObj.unreadCount instanceof Map) {
-      conversationObj.unreadCount = Object.fromEntries(conversationObj.unreadCount);
+    
+    // Handle Mongoose Map type - convert to plain object
+    if (conversationObj.unreadCount) {
+      const unreadMap = {};
+      if (conversationObj.unreadCount instanceof Map) {
+        for (const [key, value] of conversationObj.unreadCount) {
+          unreadMap[key] = value;
+        }
+      } else if (typeof conversationObj.unreadCount === 'object') {
+        Object.assign(unreadMap, conversationObj.unreadCount);
+      }
+      conversationObj.unreadCount = unreadMap;
     }
     
     return res.status(200).json({ 
@@ -64,11 +83,23 @@ exports.createConversation = catchAsync(async (req, res, next) => {
   });
   console.log('📝 [CONV] Conversation created successfully:', conversation._id);
   
-  // Convert to plain object for JSON serialization (Maps can't be serialized)
+  // Convert to plain object for JSON serialization
   const conversationObj = conversation.toObject();
-  if (conversationObj.unreadCount instanceof Map) {
-    conversationObj.unreadCount = Object.fromEntries(conversationObj.unreadCount);
+  
+  // Handle Mongoose Map type - convert to plain object
+  if (conversationObj.unreadCount) {
+    const unreadMap = {};
+    if (conversationObj.unreadCount instanceof Map) {
+      for (const [key, value] of conversationObj.unreadCount) {
+        unreadMap[key] = value;
+      }
+    } else if (typeof conversationObj.unreadCount === 'object') {
+      Object.assign(unreadMap, conversationObj.unreadCount);
+    }
+    conversationObj.unreadCount = unreadMap;
+    console.log('📝 [CONV] Converted unreadCount:', conversationObj.unreadCount);
   }
+  
   console.log('📝 [CONV] Full conversation object:', JSON.stringify(conversationObj, null, 2));
   res.status(201).json({ status: 'success', data: conversationObj });
 });

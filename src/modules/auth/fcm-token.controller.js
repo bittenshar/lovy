@@ -53,19 +53,27 @@ exports.saveFcmToken = async (req, res) => {
     }
 
     // Check if token already exists
-    const tokenExists = user.fcmTokens.some(t => t === fcmToken);
+    const tokenExists = user.fcmTokens.some(t => t.token === fcmToken);
     
     if (!tokenExists) {
-      // Add token to array
-      user.fcmTokens.push(fcmToken);
+      // Add token as object to array (matching schema: { token, platform, active, updatedAt })
+      user.fcmTokens.push({
+        token: fcmToken,
+        platform: platform || 'unknown',
+        active: true,
+        updatedAt: new Date()
+      });
       console.log(`🔔 [FCM-TOKEN] Added new token to fcmTokens array`);
     } else {
       console.log(`⚠️  [FCM-TOKEN] Token already exists for user ${userId}`);
+      // Update the existing token's updatedAt and platform
+      const existingToken = user.fcmTokens.find(t => t.token === fcmToken);
+      if (existingToken) {
+        existingToken.platform = platform || existingToken.platform || 'unknown';
+        existingToken.updatedAt = new Date();
+        existingToken.active = true;
+      }
     }
-
-    // Also store platform info
-    user.platform = platform || 'unknown';
-    user.fcmTokenUpdatedAt = new Date();
 
     // Save user
     await user.save();
@@ -79,7 +87,7 @@ exports.saveFcmToken = async (req, res) => {
       user: {
         id: user._id,
         email: user.email,
-        fcmToken: fcmToken.substring(0, 20) + '...' // Return partial token for security
+        fcmTokenCount: user.fcmTokens.length
       }
     });
   } catch (error) {

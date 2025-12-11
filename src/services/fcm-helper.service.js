@@ -45,11 +45,18 @@ async function sendNotificationToUser(userId, title, body, data = {}) {
     // Get tokens from either fcmTokens array or single fcmToken field
     let tokens = [];
     if (Array.isArray(user.fcmTokens) && user.fcmTokens.length > 0) {
-      tokens = user.fcmTokens.filter(t => {
-        // Handle both string tokens and object tokens
-        const tokenValue = typeof t === 'string' ? t : t.token;
-        return tokenValue && typeof tokenValue === 'string' && tokenValue.trim().length > 0;
-      }).map(t => typeof t === 'string' ? t : t.token);
+      tokens = user.fcmTokens
+        .filter(t => {
+          // Filter for active tokens only
+          if (t.active === false) {
+            console.log(`🔔 [FCM] Skipping inactive token`);
+            return false;
+          }
+          // Handle both string tokens and object tokens
+          const tokenValue = typeof t === 'string' ? t : t.token;
+          return tokenValue && typeof tokenValue === 'string' && tokenValue.trim().length > 0;
+        })
+        .map(t => typeof t === 'string' ? t : t.token);
       console.log(`🔔 [FCM] Using tokens from fcmTokens array: ${tokens.length}`);
     } else if (user.fcmToken) {
       tokens = Array.isArray(user.fcmToken) 

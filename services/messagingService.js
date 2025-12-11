@@ -70,7 +70,7 @@ class MessagingService {
   async markMessageAsRead(messageId, readById) {
     try {
       // Get message details
-      const Message = require('../models/message');
+      const Message = require('../src/modules/conversations/message.model');
       const message = await Message.findById(messageId);
 
       if (!message) {

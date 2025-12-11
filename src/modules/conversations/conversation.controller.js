@@ -54,21 +54,9 @@ exports.createConversation = catchAsync(async (req, res, next) => {
   if (existingConversation) {
     console.log('📝 [CONV] Existing conversation found:', existingConversation._id);
     
-    // Convert to plain object for JSON serialization
-    const conversationObj = existingConversation.toObject();
-    
-    // Handle Mongoose Map type - convert to plain object
-    if (conversationObj.unreadCount) {
-      const unreadMap = {};
-      if (conversationObj.unreadCount instanceof Map) {
-        for (const [key, value] of conversationObj.unreadCount) {
-          unreadMap[key] = value;
-        }
-      } else if (typeof conversationObj.unreadCount === 'object') {
-        Object.assign(unreadMap, conversationObj.unreadCount);
-      }
-      conversationObj.unreadCount = unreadMap;
-    }
+    // Convert to plain object and explicitly convert Map field
+    let conversationObj = existingConversation.toObject();
+    conversationObj.unreadCount = convertMapToObject(conversationObj.unreadCount);
     
     return res.status(200).json({ 
       status: 'success', 
@@ -83,26 +71,32 @@ exports.createConversation = catchAsync(async (req, res, next) => {
   });
   console.log('📝 [CONV] Conversation created successfully:', conversation._id);
   
-  // Convert to plain object for JSON serialization
-  const conversationObj = conversation.toObject();
+  // Convert to plain object and explicitly convert Map field
+  let conversationObj = conversation.toObject();
+  conversationObj.unreadCount = convertMapToObject(conversationObj.unreadCount);
   
-  // Handle Mongoose Map type - convert to plain object
-  if (conversationObj.unreadCount) {
-    const unreadMap = {};
-    if (conversationObj.unreadCount instanceof Map) {
-      for (const [key, value] of conversationObj.unreadCount) {
-        unreadMap[key] = value;
-      }
-    } else if (typeof conversationObj.unreadCount === 'object') {
-      Object.assign(unreadMap, conversationObj.unreadCount);
-    }
-    conversationObj.unreadCount = unreadMap;
-    console.log('📝 [CONV] Converted unreadCount:', conversationObj.unreadCount);
-  }
-  
-  console.log('📝 [CONV] Full conversation object:', JSON.stringify(conversationObj, null, 2));
+  console.log('📝 [CONV] Final object to send:', conversationObj);
   res.status(201).json({ status: 'success', data: conversationObj });
 });
+
+// Helper function to convert Map or Map-like objects to plain objects
+function convertMapToObject(value) {
+  if (!value) return {};
+  
+  const obj = {};
+  try {
+    if (value instanceof Map) {
+      for (const [key, val] of value) {
+        obj[key] = val;
+      }
+    } else if (typeof value === 'object' && !Array.isArray(value)) {
+      Object.assign(obj, value);
+    }
+  } catch (e) {
+    console.log('⚠️  Error converting map:', e.message);
+  }
+  return obj;
+}
 
 exports.listMessages = catchAsync(async (req, res, next) => {
   const conversationId = req.params.conversationId;

@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { protect: protectAuth } = require('../../shared/middlewares/auth.middleware');
-const Message = require('../../../models/message');
+const Message = require('../conversations/message.model');
 const Conversation = require('../../../models/conversation');
 const FCMToken = require('../../../models/fcmToken');
 const firebaseNotificationService = require('../../../services/firebaseNotificationService');

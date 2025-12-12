@@ -4,6 +4,7 @@ const Job = require('./job.model');
 const Application = require('../applications/application.model');
 const Business = require('../businesses/business.model');
 const User = require('../users/user.model');
+const TeamMember = require('../businesses/teamMember.model');
 
 const AppError = require('../../shared/utils/appError');
 const catchAsync = require('../../shared/utils/catchAsync');
@@ -155,6 +156,28 @@ const buildJobResponse = async (job, currentUser) => {
   if (currentUser?.userType === 'employer') {
     const tag = resolveOwnershipTag(currentUser, j.employer, j.businessDetails?.owner);
     if (tag) j.createdByTag = tag;
+
+    // Add access info for employers - show team members with access to this job
+    if (j.businessId) {
+      try {
+        const teamMembers = await TeamMember.find({
+          business: j.businessId,
+          active: true
+        }).select('user').populate('user', 'firstName lastName email');
+
+        j.accessInfo = {
+          owner: j.employerId,
+          teamMembers: teamMembers.map(tm => ({
+            id: tm.user._id.toString(),
+            name: `${tm.user.firstName} ${tm.user.lastName}`.trim() || tm.user.email,
+            email: tm.user.email
+          }))
+        };
+      } catch (error) {
+        console.error('Error fetching team members for access info:', error);
+        j.accessInfo = { owner: j.employerId, teamMembers: [] };
+      }
+    }
   }
 
   return j;

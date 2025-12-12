@@ -22,7 +22,8 @@ router.get('/worker', protect, (req, res, next) => {
 });
 
 // Employer view with cache control
-router.get('/employer', protect, requirePermissions('view_jobs'), (req, res, next) => {
+// Don't require view_jobs permission here - controller will filter accessible businesses
+router.get('/employer', protect, (req, res, next) => {
   // Set proper cache control for employer view
   res.set('Cache-Control', 'no-cache, must-revalidate');
   return controller.listJobsForEmployer(req, res, next);

@@ -3,6 +3,7 @@ const Job = require('../jobs/job.model');
 const User = require('../users/user.model');
 const AppError = require('../../shared/utils/appError');
 const catchAsync = require('../../shared/utils/catchAsync');
+const { getAccessibleBusinessIds } = require('../../shared/utils/businessAccess');
 
 const HOURS_IN_MS = 1000 * 60 * 60;
 
@@ -301,10 +302,28 @@ const buildManagementSummary = (records) => {
 
 exports.listAttendance = catchAsync(async (req, res, next) => {
   const filter = {};
+  
+  // Add business access control for employers
+  if (req.user.userType === 'employer') {
+    const accessibleBusinessIds = await getAccessibleBusinessIds(req.user);
+    if (!accessibleBusinessIds.size) {
+      return res.status(200).json({ status: 'success', results: 0, data: [] });
+    }
+
+    if (req.query.businessId) {
+      if (!accessibleBusinessIds.has(req.query.businessId)) {
+        return next(new AppError('You do not have access to this business', 403));
+      }
+      filter.business = req.query.businessId;
+    } else {
+      filter.business = { $in: Array.from(accessibleBusinessIds) };
+    }
+  }
+
   if (req.query.workerId) {
     filter.worker = req.query.workerId;
   }
-  if (req.query.businessId) {
+  if (req.query.businessId && !req.user.userType === 'employer') {
     filter.business = req.query.businessId;
   }
   if (req.query.jobId) {
@@ -383,6 +402,14 @@ exports.getAttendanceRecord = catchAsync(async (req, res, next) => {
   }
   if (req.user.userType === 'worker' && record.worker?._id?.toString() !== req.user._id.toString()) {
     return next(new AppError('You can only view your own attendance records', 403));
+  }
+  // Add business access control for employers
+  if (req.user.userType === 'employer') {
+    const accessibleBusinessIds = await getAccessibleBusinessIds(req.user);
+    const businessId = record.business?._id?.toString() || record.business?.toString();
+    if (!businessId || !accessibleBusinessIds.has(businessId)) {
+      return next(new AppError('You do not have access to this attendance record', 403));
+    }
   }
   res.status(200).json({ status: 'success', data: record });
 });
@@ -627,13 +654,33 @@ exports.getManagementView = catchAsync(async (req, res, next) => {
   if (!range) {
     return next(new AppError('Invalid date parameter', 400));
   }
+  
+  // Add business access control
+  const accessibleBusinessIds = await getAccessibleBusinessIds(req.user);
+  if (!accessibleBusinessIds.size) {
+    return res.status(200).json({ 
+      status: 'success', 
+      data: [], 
+      summary: { totalWorkers: 0, totalHours: 0, totalDistance: 0 } 
+    });
+  }
+
   const filter = {
     employer: req.user._id,
     // Find records where the scheduled time range overlaps with the queried date
     // A job overlaps with a date if: job_start <= day_end AND job_end > day_start
     scheduledStart: { $lte: range.end },
-    scheduledEnd: { $gt: range.start }
+    scheduledEnd: { $gt: range.start },
+    business: { $in: Array.from(accessibleBusinessIds) }
   };
+
+  if (req.query.businessId) {
+    if (!accessibleBusinessIds.has(req.query.businessId)) {
+      return next(new AppError('You do not have access to this business', 403));
+    }
+    filter.business = req.query.businessId;
+  }
+
   if (req.query.status && req.query.status !== 'all') {
     filter.status = req.query.status;
   }
@@ -642,9 +689,6 @@ exports.getManagementView = catchAsync(async (req, res, next) => {
   }
   if (req.query.jobId) {
     filter.job = req.query.jobId;
-  }
-  if (req.query.businessId) {
-    filter.business = req.query.businessId;
   }
   const records = await AttendanceRecord.find(filter)
     .populate([
@@ -672,6 +716,16 @@ exports.markComplete = catchAsync(async (req, res, next) => {
   if (record.employer?.toString() !== req.user._id.toString()) {
     return next(new AppError('Only the owning employer can update this record', 403));
   }
+  
+  // Add business access control
+  if (req.user.userType === 'employer') {
+    const accessibleBusinessIds = await getAccessibleBusinessIds(req.user);
+    const businessId = record.business?.toString();
+    if (!businessId || !accessibleBusinessIds.has(businessId)) {
+      return next(new AppError('You do not have access to this business', 403));
+    }
+  }
+
   if (!record.clockInAt) {
     return next(new AppError('Clock in before marking complete', 400));
   }
@@ -730,6 +784,16 @@ exports.updateHours = catchAsync(async (req, res, next) => {
   if (record.employer?.toString() !== req.user._id.toString()) {
     return next(new AppError('Only the owning employer can update this record', 403));
   }
+  
+  // Add business access control
+  if (req.user.userType === 'employer') {
+    const accessibleBusinessIds = await getAccessibleBusinessIds(req.user);
+    const businessId = record.business?.toString();
+    if (!businessId || !accessibleBusinessIds.has(businessId)) {
+      return next(new AppError('You do not have access to this business', 403));
+    }
+  }
+
   await record.populate([
     {
       path: 'job',
@@ -773,6 +837,16 @@ exports.updateAttendance = catchAsync(async (req, res, next) => {
   if (req.user.userType !== 'employer' || record.employer?.toString() !== req.user._id.toString()) {
     return next(new AppError('Only the owning employer can update attendance', 403));
   }
+  
+  // Add business access control
+  if (req.user.userType === 'employer') {
+    const accessibleBusinessIds = await getAccessibleBusinessIds(req.user);
+    const businessId = record.business?.toString();
+    if (!businessId || !accessibleBusinessIds.has(businessId)) {
+      return next(new AppError('You do not have access to this business', 403));
+    }
+  }
+
   Object.assign(record, req.body);
   await record.save();
   res.status(200).json({ status: 'success', data: record });

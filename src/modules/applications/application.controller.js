@@ -213,7 +213,8 @@ exports.listMyApplications = catchAsync(async (req, res, next) => {
     const workerProfile = workerId ? profileMap.get(workerId) || null : null;
     return buildApplicationPresenter(application, {
       workerProfile,
-      includeApplicantDetails: true
+      includeApplicantDetails: true,
+      rawJobId: application.job?.toString ? application.job.toString() : application.job
     });
   });
 

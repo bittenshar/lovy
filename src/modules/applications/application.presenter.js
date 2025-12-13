@@ -14,10 +14,15 @@ const toStringId = (value) => {
   if (typeof value === 'string') return value;
   if (value instanceof Date) return value.toISOString();
   if (value.toHexString) return value.toHexString();
+  if (value.toString && value.toString().length === 24) {
+    // Likely a MongoDB ObjectId that can be converted to string
+    const stringValue = value.toString();
+    if (/^[0-9a-f]{24}$/i.test(stringValue)) return stringValue;
+  }
   if (value._id) return toStringId(value._id);
   if (value.id) return value.id;
   if (typeof value === 'number') return value.toString();
-  return null;
+  return value.toString() || null;
 };
 
 const formatDateString = (value) => {
@@ -308,6 +313,13 @@ const buildApplicationPresenter = (applicationDoc, options = {}) => {
     ? resolveCompanyLogos(business)
     : { base: null, small: null, large: null };
 
+  // Ensure jobId is extracted correctly from either populated job or original reference
+  let jobId = toStringId(job?._id);
+  if (!jobId && application?.job) {
+    // Handle case where job wasn't populated but reference exists
+    jobId = toStringId(application.job);
+  }
+
   const response = {
     id: toStringId(application?._id),
     status: application?.status || 'pending',
@@ -317,7 +329,7 @@ const buildApplicationPresenter = (applicationDoc, options = {}) => {
     hiredAt: application?.hiredAt || null,
     rejectedAt: application?.rejectedAt || null,
     withdrawnAt: application?.withdrawnAt || null,
-    jobId: toStringId(job?._id) || toStringId(application?.job),
+    jobId: jobId || '',
     workerId: toStringId(application?.worker),
     detailItems,
     detailText,

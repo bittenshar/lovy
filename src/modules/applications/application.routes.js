@@ -37,7 +37,10 @@ router.patch('/me/:applicationId', (req, res, next) => {
 
 router.get('/worker/:workerId', requirePermissions('view_applications', { requireBusinessId: false }), controller.getWorkerApplications);
 
-// Application status management
+// Allow employers to update application status
+router.patch('/:applicationId/status', requirePermissions('manage_applications'), controller.updateApplication);
+
+// Application status management (generic endpoint for permission-based access)
 router.patch('/:applicationId', requirePermissions('manage_applications'), controller.updateApplication);
 
 module.exports = router;

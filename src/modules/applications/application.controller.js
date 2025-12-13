@@ -268,11 +268,31 @@ exports.updateApplication = catchAsync(async (req, res, next) => {
       return next(new AppError('Job information missing for application', 400));
     }
 
-    await ensureBusinessAccess({
-      user: req.user,
-      businessId: application.job.business,
-      requiredPermissions: 'manage_applications',
-    });
+    console.log('🔍 Employer hiring attempt:');
+    console.log('   Employer ID:', req.user._id);
+    console.log('   Job Business ID:', application.job.business);
+
+    // For employer hiring, verify access to the business more flexibly
+    const Business = require('../../modules/businesses/business.model');
+    const business = await Business.findById(application.job.business);
+    
+    if (!business) {
+      return next(new AppError('Job business not found', 404));
+    }
+
+    const businessOwnerId = business.owner.toString ? business.owner.toString() : business.owner;
+    const employerId = req.user._id.toString ? req.user._id.toString() : req.user._id;
+    
+    console.log('   Business owner ID:', businessOwnerId);
+    console.log('   Current employer ID:', employerId);
+    
+    // Check if employer is the business owner
+    if (businessOwnerId !== employerId) {
+      console.error('❌ Employer is not the business owner');
+      return next(new AppError('You can only hire for jobs you own', 403));
+    }
+    
+    console.log('✅ Employer owns the business');
 
     if (!['pending', 'hired', 'rejected'].includes(req.body.status)) {
       return next(new AppError('Invalid status', 400));

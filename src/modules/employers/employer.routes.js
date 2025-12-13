@@ -8,8 +8,20 @@ const router = express.Router();
 
 router.use(protect, restrictTo('employer'));
 
+// Debug logging for employer routes
+router.use((req, res, next) => {
+  console.log('📍 Employer Route Hit:', req.method, req.path);
+  console.log('   User:', req.user?._id, 'Type:', req.user?.userType);
+  next();
+});
+
 router.get('/me/applications', controller.listEmployerApplications);
-router.patch('/me/applications/:applicationId', applicationController.updateApplication);
+router.patch('/me/applications/:applicationId', (req, res, next) => {
+  console.log('🔄 PATCH /me/applications/:applicationId hit');
+  console.log('   applicationId:', req.params.applicationId);
+  console.log('   body:', req.body);
+  applicationController.updateApplication(req, res, next);
+});
 router.post('/me/applications/:applicationId/hire', jobController.hireApplicant);
 
 router.get('/me', controller.getEmployerProfile);

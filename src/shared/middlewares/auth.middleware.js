@@ -81,8 +81,16 @@ exports.protect = catchAsync(async (req, res, next) => {
 });
 
 exports.restrictTo = (...roles) => (req, res, next) => {
+  console.log('🔐 restrictTo middleware check:');
+  console.log('   Required roles:', roles);
+  console.log('   User present:', !!req.user);
+  console.log('   User type:', req.user?.userType);
+  console.log('   User ID:', req.user?._id);
+  
   if (!req.user || !roles.includes(req.user.userType)) {
+    console.error('❌ Access denied - user type mismatch');
     return next(new AppError('You do not have permission to perform this action', 403));
   }
+  console.log('✅ User role validated');
   next();
 };

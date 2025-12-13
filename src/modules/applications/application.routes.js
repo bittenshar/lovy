@@ -25,7 +25,16 @@ router.get('/me', (req, res, next) => {
     return next(new AppError(`Access denied - only workers can view their applications. Current user type: ${req.user.userType}`, 403));
   }
   return controller.listMyApplications(req, res, next);
-}); 
+});
+
+// Allow workers to withdraw their own applications
+router.patch('/me/:applicationId', (req, res, next) => {
+  if (req.user.userType !== 'worker') {
+    return next(new AppError('Access denied - only workers can update their own applications', 403));
+  }
+  return controller.updateApplication(req, res, next);
+});
+
 router.get('/worker/:workerId', requirePermissions('view_applications', { requireBusinessId: false }), controller.getWorkerApplications);
 
 // Application status management

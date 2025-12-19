@@ -5,6 +5,7 @@ const Application = require('../applications/application.model');
 const Business = require('../businesses/business.model');
 const User = require('../users/user.model');
 const TeamMember = require('../businesses/teamMember.model');
+const notificationUtils = require('../notification/notification.utils');
 
 const AppError = require('../../shared/utils/appError');
 const catchAsync = require('../../shared/utils/catchAsync');
@@ -18,7 +19,6 @@ const {
   getAccessibleBusinessIds,
 } = require('../../shared/utils/businessAccess');
 const { resolveOwnershipTag } = require('../../shared/utils/ownershipTag');
-const notificationTriggers = require('../../services/notification-triggers.service');
 
 // If you keep free/premium logic:
 const JOB_FREE_QUOTA = 2;
@@ -431,7 +431,25 @@ exports.createJob = catchAsync(async (req, res, next) => {
   ]);
 
   const dto = await buildJobResponse(job, req.user);
-  
+
+  // SEND BROADCAST NOTIFICATION if job is published
+  if (shouldAutoPublish) {
+    try {
+      await notificationUtils.sendBroadcast({
+        title: "📢 New Job Posted",
+        body: `${job.business.name || job.business.businessName} posted: ${job.title}`,
+        data: {
+          type: "job_posted",
+          action: "view_job",
+          jobId: job._id.toString(),
+          businessId: job.business._id.toString()
+        }
+      });
+    } catch (error) {
+      console.error("Notification error:", error.message);
+    }
+  }
+
   res.status(201).json({ status: 'success', data: dto });
 });
 

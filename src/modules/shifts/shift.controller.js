@@ -2,6 +2,7 @@ const Shift = require('./shift.model');
 const SwapRequest = require('./swapRequest.model');
 const AppError = require('../../shared/utils/appError');
 const catchAsync = require('../../shared/utils/catchAsync');
+const notificationUtils = require('../notification/notification.utils');
 
 exports.listShifts = catchAsync(async (req, res) => {
   const filter = {};
@@ -40,6 +41,25 @@ exports.requestSwap = catchAsync(async (req, res, next) => {
   });
   shift.status = 'swap_requested';
   await shift.save();
+
+  // SEND NOTIFICATION - Shift Swap Requested
+  try {
+    const shiftDate = shift.scheduledStart ? new Date(shift.scheduledStart).toLocaleDateString() : 'soon';
+    await notificationUtils.sendTemplatedNotification(
+      req.body.toWorkerId.toString(),
+      "shiftSwapRequested",
+      [req.user.firstName || "A worker", shiftDate],
+      {
+        data: {
+          swapId: swap._id.toString(),
+          shiftId: shift._id.toString()
+        }
+      }
+    );
+  } catch (error) {
+    console.error("Notification error:", error.message);
+  }
+
   res.status(201).json({ status: 'success', data: swap });
 });
 
@@ -66,10 +86,46 @@ exports.updateSwap = catchAsync(async (req, res, next) => {
     swap.shift.status = 'swapped';
     swap.shift.worker = swap.toWorker;
     await swap.shift.save();
+
+    // SEND NOTIFICATION - Shift Swap Approved
+    try {
+      const shiftDate = swap.shift.scheduledStart ? new Date(swap.shift.scheduledStart).toLocaleDateString() : 'soon';
+      await notificationUtils.sendTemplatedNotification(
+        swap.fromWorker.toString(),
+        "shiftSwapApproved",
+        [req.user.firstName || "A worker", shiftDate],
+        {
+          data: {
+            swapId: swap._id.toString(),
+            shiftId: swap.shift._id.toString()
+          }
+        }
+      );
+    } catch (error) {
+      console.error("Notification error:", error.message);
+    }
   }
   if (req.body.status === 'rejected') {
     swap.shift.status = 'assigned';
     await swap.shift.save();
+
+    // SEND NOTIFICATION - Shift Swap Rejected
+    try {
+      const shiftDate = swap.shift.scheduledStart ? new Date(swap.shift.scheduledStart).toLocaleDateString() : 'soon';
+      await notificationUtils.sendTemplatedNotification(
+        swap.fromWorker.toString(),
+        "shiftSwapRejected",
+        [req.user.firstName || "A worker", shiftDate],
+        {
+          data: {
+            swapId: swap._id.toString(),
+            shiftId: swap.shift._id.toString()
+          }
+        }
+      );
+    } catch (error) {
+      console.error("Notification error:", error.message);
+    }
   }
 
   res.status(200).json({ status: 'success', data: swap });

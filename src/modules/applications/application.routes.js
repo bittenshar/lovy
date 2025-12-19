@@ -27,7 +27,9 @@ router.get('/me', (req, res, next) => {
   return controller.listMyApplications(req, res, next);
 });
 
-// Allow workers to withdraw their own applications
+router.get('/worker/:workerId', requirePermissions('view_applications', { requireBusinessId: false }), controller.getWorkerApplications);
+
+// Allow workers to withdraw their own applications (MORE SPECIFIC - comes before generic :applicationId)
 router.patch('/me/:applicationId', (req, res, next) => {
   if (req.user.userType !== 'worker') {
     return next(new AppError('Access denied - only workers can update their own applications', 403));
@@ -35,12 +37,9 @@ router.patch('/me/:applicationId', (req, res, next) => {
   return controller.updateApplication(req, res, next);
 });
 
-router.get('/worker/:workerId', requirePermissions('view_applications', { requireBusinessId: false }), controller.getWorkerApplications);
-
-// Allow employers to update application status
-router.patch('/:applicationId/status', requirePermissions('manage_applications'), controller.updateApplication);
-
-// Application status management (generic endpoint for permission-based access)
-router.patch('/:applicationId', requirePermissions('manage_applications'), controller.updateApplication);
+// Allow employers to update application status (generic endpoint)
+// Check permissions inside controller to handle business context properly
+router.patch('/:applicationId/status', controller.updateApplication);
+router.patch('/:applicationId', controller.updateApplication);
 
 module.exports = router;

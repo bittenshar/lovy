@@ -2,7 +2,7 @@ const Conversation = require('../../../models/conversation');
 const Message = require('./message.model');
 const catchAsync = require('../../shared/utils/catchAsync');
 const AppError = require('../../shared/utils/appError');
-const notificationService = require('../notifications/notification.service');
+const notificationUtils = require('../notification/notification.utils');
 
 exports.listConversations = catchAsync(async (req, res) => {
   console.log('📥 [CONV] Listing conversations for user:', req.user._id);
@@ -74,6 +74,30 @@ exports.createConversation = catchAsync(async (req, res, next) => {
   // Convert to plain object and explicitly convert Map field
   let conversationObj = conversation.toObject();
   conversationObj.unreadCount = convertMapToObject(conversationObj.unreadCount);
+  
+  // SEND NOTIFICATION - Conversation Started (to other participants)
+  const otherParticipants = participants.filter(p => p !== req.user._id.toString());
+  for (const recipientId of otherParticipants) {
+    try {
+      const initiatorName = req.user.firstName || req.user.email || 'Unknown';
+      await notificationUtils.sendTemplatedNotification(
+        recipientId.toString(),
+        "conversationStarted",
+        [initiatorName],
+        {
+          data: {
+            type: "conversation_started",
+            action: "open_conversation",
+            conversationId: conversation._id.toString(),
+            initiatorId: req.user._id.toString()
+          }
+        }
+      );
+      console.log('✅ [CONV] Conversation started notification sent to:', recipientId);
+    } catch (error) {
+      console.error("Conversation notification error:", error.message);
+    }
+  }
   
   console.log('📝 [CONV] Final object to send:', conversationObj);
   res.status(201).json({ status: 'success', data: conversationObj });
@@ -213,44 +237,37 @@ exports.sendMessage = catchAsync(async (req, res, next) => {
   for (const recipientId of recipients) {
     try {
       console.log('\n📨 [MSG] ===== FCM NOTIFICATION START =====');
-      console.log('📨 [MSG] Sending FCM notification to recipient:', recipientId);
+      console.log('📨 [MSG] Sending notification to recipient:', recipientId);
       
-      const notificationPayload = {
-        recipient: recipientId,
-        type: 'new_message',  // Valid enum value from notification schema
-        priority: 'medium',
-        title: `New message from ${senderName}`,
-        message: req.body.body.slice(0, 100) + (req.body.body.length > 100 ? '...' : ''),
-        metadata: {
-          type: 'chat',
-          conversationId: conversation._id.toString(),
-          messageId: message._id.toString(),
-          senderId: req.user._id.toString(),
-          senderName: senderName,
-          messagePreview: req.body.body.slice(0, 50)
-        },
-        senderUserId: req.user._id
-      };
-      
-      console.log('📨 [MSG] Notification payload:', {
-        recipient: notificationPayload.recipient.toString(),
-        type: notificationPayload.type,
-        title: notificationPayload.title,
-        messagePreview: notificationPayload.message.substring(0, 50),
-        conversationId: notificationPayload.metadata.conversationId,
-        messageId: notificationPayload.metadata.messageId
-      });
-      
-      const result = await notificationService.sendSafeNotification(notificationPayload);
+      const senderDisplayName = message.sender?.firstName || message.sender?.email || 'Unknown';
+      const messagePreview = req.body.body.slice(0, 50);
+      const messageFull = req.body.body.slice(0, 150);
+
+      // SEND NOTIFICATION - Message Received (Enhanced FCM payload for chat)
+      await notificationUtils.sendTemplatedNotification(
+        recipientId.toString(),
+        "messageReceived",
+        [senderDisplayName, messagePreview],
+        {
+          data: {
+            type: "new_message",
+            action: "open_conversation",
+            conversationId: conversation._id.toString(),
+            messageId: message._id.toString(),
+            senderId: req.user._id.toString(),
+            senderName: senderDisplayName,
+            messagePreview: messagePreview,
+            messageFull: messageFull,
+            timestamp: new Date().toISOString()
+          }
+        }
+      );
       
       console.log('✅ [MSG] FCM notification sent successfully to:', recipientId);
-      console.log('📨 [MSG] Notification result:', result?._id || 'Success');
-      console.log('📨 [MSG] ===== FCM NOTIFICATION END =====\n');
       
     } catch (notificationError) {
-      console.log('⚠️  [MSG] Failed to send FCM notification to', recipientId);
+      console.log('⚠️  [MSG] Failed to send notification to', recipientId);
       console.log('⚠️  [MSG] Error:', notificationError.message);
-      console.log('⚠️  [MSG] Stack:', notificationError.stack);
     }
   }
 

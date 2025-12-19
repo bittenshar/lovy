@@ -33,3 +33,72 @@ exports.getUser = catchAsync(async (req, res, next) => {
   }
   res.status(200).json({ status: 'success', data: user });
 });
+
+exports.addFcmToken = catchAsync(async (req, res, next) => {
+  const { fcmToken, platform } = req.body;
+
+  if (!fcmToken) {
+    return next(new AppError('FCM token is required', 400));
+  }
+
+  const user = req.user;
+
+  // Initialize fcmTokens array if it doesn't exist
+  if (!user.fcmTokens) {
+    user.fcmTokens = [];
+  }
+
+  // Convert to array if it's a string (backward compatibility)
+  if (!Array.isArray(user.fcmTokens)) {
+    user.fcmTokens = [user.fcmTokens];
+  }
+
+  // Add new token if not already present
+  if (!user.fcmTokens.includes(fcmToken)) {
+    user.fcmTokens.push(fcmToken);
+    await user.save();
+    console.log(`✅ FCM token added for user ${user._id}`);
+  } else {
+    console.log(`ℹ️ FCM token already registered for user ${user._id}`);
+  }
+
+  res.status(200).json({
+    status: 'success',
+    message: 'FCM token registered successfully',
+    data: {
+      userId: user._id,
+      fcmTokenCount: user.fcmTokens.length,
+      platform: platform || 'web'
+    }
+  });
+});
+
+exports.removeFcmToken = catchAsync(async (req, res, next) => {
+  const { fcmToken } = req.body;
+
+  if (!fcmToken) {
+    return next(new AppError('FCM token is required', 400));
+  }
+
+  const user = req.user;
+
+  if (!user.fcmTokens || !Array.isArray(user.fcmTokens)) {
+    return next(new AppError('No FCM tokens registered', 404));
+  }
+
+  const index = user.fcmTokens.indexOf(fcmToken);
+  if (index > -1) {
+    user.fcmTokens.splice(index, 1);
+    await user.save();
+    console.log(`✅ FCM token removed for user ${user._id}`);
+  }
+
+  res.status(200).json({
+    status: 'success',
+    message: 'FCM token removed successfully',
+    data: {
+      userId: user._id,
+      fcmTokenCount: user.fcmTokens.length
+    }
+  });
+});

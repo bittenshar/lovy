@@ -9,7 +9,7 @@ const {
   getAccessibleBusinessIds
 } = require('../../shared/utils/businessAccess');
 const { buildApplicationPresenter } = require('./application.presenter');
-const notificationTriggers = require('../../services/notification-triggers.service');
+const notificationUtils = require('../notification/notification.utils');
 
 const APPLICATION_FREE_QUOTA = 3;
 const parsePositiveInt = (value, fallback) => {
@@ -122,7 +122,27 @@ exports.createApplication = catchAsync(async (req, res, next) => {
     await req.user.save();
   }
 
-  res.status(201).json({ status: 'success', data: application });
+  // SEND NOTIFICATION - Job Applied
+  try {
+    // Send notification to the employer who posted the job
+    const employerId = job.employer ? job.employer.toString() : job.createdBy?.toString();
+    if (employerId) {
+      await notificationUtils.sendTemplatedNotification(
+        employerId,
+        "jobApplied",
+        [job.title, job.business.name],
+        {
+          data: {
+            jobId: job._id.toString(),
+            applicationId: application._id.toString(),
+            applicantName: req.user.firstName
+          }
+        }
+      );
+    }
+  } catch (error) {
+    console.error("Notification error:", error.message);
+  }
 
   res.status(201).json({ status: 'success', data: application });
 });
@@ -263,17 +283,19 @@ exports.updateApplication = catchAsync(async (req, res, next) => {
     const updatedApplication = await Application.findById(application._id).populate('job');
     return res.status(200).json({ status: 'success', data: updatedApplication });
   }
-  if (req.user.userType === 'employer') {
+  if (req.user.userType === 'employer' || req.user.userType === 'employee') {
     if (!application.job) {
       return next(new AppError('Job information missing for application', 400));
     }
 
-    console.log('🔍 Employer hiring attempt:');
-    console.log('   Employer ID:', req.user._id);
+    console.log('🔍 Employer/Employee hiring attempt:');
+    console.log('   User ID:', req.user._id);
+    console.log('   User Type:', req.user.userType);
     console.log('   Job Business ID:', application.job.business);
 
-    // For employer hiring, verify access to the business more flexibly
+    // For employer/employee hiring, verify access to the business
     const Business = require('../../modules/businesses/business.model');
+    const TeamMember = require('../../modules/businesses/teamMember.model');
     const business = await Business.findById(application.job.business);
     
     if (!business) {
@@ -281,18 +303,45 @@ exports.updateApplication = catchAsync(async (req, res, next) => {
     }
 
     const businessOwnerId = business.owner.toString ? business.owner.toString() : business.owner;
-    const employerId = req.user._id.toString ? req.user._id.toString() : req.user._id;
+    const userId = req.user._id.toString ? req.user._id.toString() : req.user._id;
     
     console.log('   Business owner ID:', businessOwnerId);
-    console.log('   Current employer ID:', employerId);
+    console.log('   Current user ID:', userId);
     
-    // Check if employer is the business owner
-    if (businessOwnerId !== employerId) {
-      console.error('❌ Employer is not the business owner');
-      return next(new AppError('You can only hire for jobs you own', 403));
+    let hasAccess = false;
+    
+    // Check if user is the business owner
+    if (businessOwnerId === userId) {
+      hasAccess = true;
+      console.log('✅ User is the business owner');
+    } else if (req.user.userType === 'employee') {
+      // For employees, check if they are a team member with manage_applications permission
+      const teamMember = await TeamMember.findOne({
+        user: userId,
+        business: application.job.business,
+        active: true
+      });
+      
+      if (teamMember) {
+        // Check if team member has manage_applications permission
+        const permissions = teamMember.permissions || [];
+        const rolePermissions = require('../../shared/middlewares/permissionMiddleware'); // We'll validate differently
+        
+        // For now, allow manager/supervisor/admin roles
+        if (['admin', 'manager', 'supervisor'].includes(teamMember.role)) {
+          hasAccess = true;
+          console.log(`✅ Employee is a team member with role: ${teamMember.role}`);
+        } else if (permissions.includes('manage_applications')) {
+          hasAccess = true;
+          console.log('✅ Employee has manage_applications permission');
+        }
+      }
     }
     
-    console.log('✅ Employer owns the business');
+    if (!hasAccess) {
+      console.error('❌ User does not have access to this business');
+      return next(new AppError('You can only manage applications for jobs you own or have team access to', 403));
+    }
 
     if (!['pending', 'hired', 'rejected'].includes(req.body.status)) {
       return next(new AppError('Invalid status', 400));
@@ -311,24 +360,43 @@ exports.updateApplication = catchAsync(async (req, res, next) => {
     }
     
     await application.save();
-    
-    // Send Firebase notification to worker about status change
-    if (previousStatus !== req.body.status) {
-      setImmediate(async () => {
-        try {
-          const worker = await User.findById(application.worker);
-          if (worker) {
-            await notificationTriggers.notifyApplicationStatusChanged(
-              application,
-              req.body.status,
-              worker,
-              application.job
-            );
+
+    // SEND NOTIFICATIONS based on status change
+    try {
+      const populatedApp = await Application.findById(application._id)
+        .populate('job', 'title business')
+        .populate('job.business', 'name')
+        .populate('worker', '_id');
+
+      if (previousStatus !== 'hired' && req.body.status === 'hired') {
+        // Send jobAccepted notification
+        await notificationUtils.sendTemplatedNotification(
+          populatedApp.worker._id.toString(),
+          "jobAccepted",
+          [populatedApp.job.title, populatedApp.job.business.name],
+          {
+            data: {
+              jobId: populatedApp.job._id.toString(),
+              applicationId: application._id.toString()
+            }
           }
-        } catch (err) {
-          console.error('Failed to send application status notification:', err.message);
-        }
-      });
+        );
+      } else if (previousStatus !== 'rejected' && req.body.status === 'rejected') {
+        // Send jobRejected notification
+        await notificationUtils.sendTemplatedNotification(
+          populatedApp.worker._id.toString(),
+          "jobRejected",
+          [populatedApp.job.title, populatedApp.job.business.name],
+          {
+            data: {
+              jobId: populatedApp.job._id.toString(),
+              applicationId: application._id.toString()
+            }
+          }
+        );
+      }
+    } catch (error) {
+      console.error("Notification error:", error.message);
     }
     
     return res.status(200).json({ status: 'success', data: application });

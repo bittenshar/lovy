@@ -1,0 +1,592 @@
+{
+  "info": {
+    "name": "Notification Testing - 18 Tests",
+    "description": "Complete notification testing for all 18 implemented notifications",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "SETUP",
+      "item": [
+        {
+          "name": "Create Employer User",
+          "request": {
+            "method": "POST",
+            "url": "http://localhost:3000/api/auth/signup",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"employer@test.com\",\n  \"password\": \"Test@123\",\n  \"firstName\": \"John\",\n  \"lastName\": \"Employer\",\n  \"userType\": \"employer\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Create Worker User",
+          "request": {
+            "method": "POST",
+            "url": "http://localhost:3000/api/auth/signup",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"worker@test.com\",\n  \"password\": \"Test@123\",\n  \"firstName\": \"Jane\",\n  \"lastName\": \"Worker\",\n  \"userType\": \"worker\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Register FCM Token (Employer)",
+          "request": {
+            "method": "POST",
+            "url": "http://localhost:3000/api/users/fcm-token",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{EMPLOYER_TOKEN}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fcmToken\": \"test_fcm_employer_{{$timestamp}}\",\n  \"platform\": \"web\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Register FCM Token (Worker)",
+          "request": {
+            "method": "POST",
+            "url": "http://localhost:3000/api/users/fcm-token",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{WORKER_TOKEN}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fcmToken\": \"test_fcm_worker_{{$timestamp}}\",\n  \"platform\": \"web\"\n}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "GROUP 1: APPLICATIONS (3 Tests)",
+      "item": [
+        {
+          "name": "1.1 - Job Applied Notification",
+          "request": {
+            "method": "POST",
+            "url": "http://localhost:3000/api/applications",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{WORKER_TOKEN}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"jobId\": \"{{JOB_ID}}\",\n  \"message\": \"I'm interested in this position\"\n}"
+            },
+            "description": "✅ Expected: Employer gets 'Job Applied' notification"
+          }
+        },
+        {
+          "name": "1.2 - Job Accepted Notification",
+          "request": {
+            "method": "PUT",
+            "url": "http://localhost:3000/api/applications/{{APPLICATION_ID}}",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{EMPLOYER_TOKEN}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"hired\"\n}"
+            },
+            "description": "✅ Expected: Worker gets 'Congratulations' notification"
+          }
+        },
+        {
+          "name": "1.3 - Job Rejected Notification",
+          "request": {
+            "method": "PUT",
+            "url": "http://localhost:3000/api/applications/{{APPLICATION_ID}}",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{EMPLOYER_TOKEN}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"rejected\"\n}"
+            },
+            "description": "✅ Expected: Worker gets rejection notification"
+          }
+        }
+      ]
+    },
+    {
+      "name": "GROUP 2: JOBS (1 Test)",
+      "item": [
+        {
+          "name": "2.1 - Job Posted (Broadcast)",
+          "request": {
+            "method": "POST",
+            "url": "http://localhost:3000/api/jobs",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{EMPLOYER_TOKEN}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Senior Developer\",\n  \"description\": \"Looking for a senior developer\",\n  \"shouldAutoPublish\": true,\n  \"canSwap\": true\n}"
+            },
+            "description": "✅ Expected: ALL workers get broadcast notification"
+          }
+        }
+      ]
+    },
+    {
+      "name": "GROUP 3: ATTENDANCE (2 Tests)",
+      "item": [
+        {
+          "name": "3.1 - Check-In Notification",
+          "request": {
+            "method": "POST",
+            "url": "http://localhost:3000/api/attendance/clock-in",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{WORKER_TOKEN}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{}"
+            },
+            "description": "✅ Expected: Worker gets 'Check-in Confirmed at HH:MM'"
+          }
+        },
+        {
+          "name": "3.2 - Check-Out Notification",
+          "request": {
+            "method": "POST",
+            "url": "http://localhost:3000/api/attendance/clock-out",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{WORKER_TOKEN}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"recordId\": \"{{ATTENDANCE_RECORD_ID}}\"\n}"
+            },
+            "description": "✅ Expected: Worker gets 'Check-out Confirmed with hours/earnings'"
+          }
+        }
+      ]
+    },
+    {
+      "name": "GROUP 4: BUSINESS (4 Tests)",
+      "item": [
+        {
+          "name": "4.1 - Business Created Notification",
+          "request": {
+            "method": "POST",
+            "url": "http://localhost:3000/api/businesses",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{EMPLOYER_TOKEN}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Tech Company Inc\",\n  \"location\": \"New York, NY\",\n  \"industry\": \"Technology\"\n}"
+            },
+            "description": "✅ Expected: Employer gets 'Business Created' notification"
+          }
+        },
+        {
+          "name": "4.2 - Business Updated Notification",
+          "request": {
+            "method": "PUT",
+            "url": "http://localhost:3000/api/businesses/{{BUSINESS_ID}}",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{EMPLOYER_TOKEN}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Tech Company Inc - Updated\",\n  \"location\": \"San Francisco, CA\"\n}"
+            },
+            "description": "✅ Expected: Employer gets 'Business Updated' notification"
+          }
+        },
+        {
+          "name": "4.3 - Team Member Added Notification",
+          "request": {
+            "method": "POST",
+            "url": "http://localhost:3000/api/businesses/{{BUSINESS_ID}}/team-members",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{EMPLOYER_TOKEN}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"newmember@test.com\",\n  \"name\": \"New Member\",\n  \"role\": \"manager\"\n}"
+            },
+            "description": "✅ Expected: New member gets 'Added to Team' notification"
+          }
+        },
+        {
+          "name": "4.4 - Team Member Removed Notification",
+          "request": {
+            "method": "DELETE",
+            "url": "http://localhost:3000/api/businesses/{{BUSINESS_ID}}/team-members/{{MEMBER_ID}}",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{EMPLOYER_TOKEN}}"
+              }
+            ],
+            "description": "✅ Expected: Removed member gets 'Removed from Team' notification"
+          }
+        }
+      ]
+    },
+    {
+      "name": "GROUP 5: SHIFTS (3 Tests)",
+      "item": [
+        {
+          "name": "5.1 - Shift Swap Requested",
+          "request": {
+            "method": "POST",
+            "url": "http://localhost:3000/api/shifts/swap/request",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{WORKER_TOKEN}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"shiftId\": \"{{SHIFT_ID}}\",\n  \"toWorkerId\": \"{{OTHER_WORKER_ID}}\",\n  \"message\": \"Can you cover my shift?\"\n}"
+            },
+            "description": "✅ Expected: Target worker gets 'Shift Swap Requested' notification"
+          }
+        },
+        {
+          "name": "5.2 - Shift Swap Approved",
+          "request": {
+            "method": "PUT",
+            "url": "http://localhost:3000/api/shifts/swap/{{SWAP_ID}}",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{OTHER_WORKER_TOKEN}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"approved\"\n}"
+            },
+            "description": "✅ Expected: Requesting worker gets 'Shift Swap Approved' notification"
+          }
+        },
+        {
+          "name": "5.3 - Shift Swap Rejected",
+          "request": {
+            "method": "PUT",
+            "url": "http://localhost:3000/api/shifts/swap/{{SWAP_ID}}",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{OTHER_WORKER_TOKEN}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"rejected\",\n  \"message\": \"Cannot cover that shift\"\n}"
+            },
+            "description": "✅ Expected: Requesting worker gets 'Shift Swap Rejected' notification"
+          }
+        }
+      ]
+    },
+    {
+      "name": "GROUP 6: CONVERSATIONS (2 Tests)",
+      "item": [
+        {
+          "name": "6.0 - Create Conversation (Setup)",
+          "request": {
+            "method": "POST",
+            "url": "http://localhost:3000/api/conversations",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{EMPLOYER_TOKEN}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"participants\": [\"{{WORKER_ID}}\"]\n}"
+            },
+            "description": "Save CONVERSATION_ID for tests 6.1 and 6.2"
+          }
+        },
+        {
+          "name": "6.1 - Message Received Notification",
+          "request": {
+            "method": "POST",
+            "url": "http://localhost:3000/api/conversations/{{CONVERSATION_ID}}/messages",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{EMPLOYER_TOKEN}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"body\": \"Hello! This is a test message for FCM notification testing\"\n}"
+            },
+            "description": "✅ Expected: Worker gets 'New Message' notification with preview"
+          }
+        },
+        {
+          "name": "6.2 - Conversation Started Notification",
+          "request": {
+            "method": "POST",
+            "url": "http://localhost:3000/api/conversations",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{EMPLOYER_TOKEN}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"participants\": [\"{{WORKER_ID}}\"]\n}"
+            },
+            "description": "✅ Expected: Worker gets 'New Conversation Started' notification"
+          }
+        }
+      ]
+    },
+    {
+      "name": "GROUP 7: PAYMENTS (2 Tests)",
+      "item": [
+        {
+          "name": "7.0 - Create Payment Order (Setup)",
+          "request": {
+            "method": "POST",
+            "url": "http://localhost:3000/api/payments/razorpay/order",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{EMPLOYER_TOKEN}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"amount\": 29900,\n  \"currency\": \"INR\",\n  \"description\": \"Test job posting\",\n  \"intent\": \"job_posting\"\n}"
+            },
+            "description": "Save ORDER_ID and PAYMENT_ID for tests 7.1 and 7.2"
+          }
+        },
+        {
+          "name": "7.1 - Payment Processed Notification",
+          "request": {
+            "method": "POST",
+            "url": "http://localhost:3000/api/payments/razorpay/verify",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{EMPLOYER_TOKEN}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"orderId\": \"{{ORDER_ID}}\",\n  \"paymentId\": \"pay_test_123\",\n  \"signature\": \"test_signature\",\n  \"status\": \"succeeded\"\n}"
+            },
+            "description": "✅ Expected: Employer gets 'Payment Processed' notification"
+          }
+        },
+        {
+          "name": "7.2 - Payment Failed Notification",
+          "request": {
+            "method": "POST",
+            "url": "http://localhost:3000/api/payments/razorpay/verify",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{EMPLOYER_TOKEN}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"orderId\": \"{{ORDER_ID}}\",\n  \"paymentId\": \"pay_test_456\",\n  \"signature\": \"test_signature\",\n  \"status\": \"failed\"\n}"
+            },
+            "description": "✅ Expected: Employer gets 'Payment Failed' notification"
+          }
+        }
+      ]
+    },
+    {
+      "name": "GROUP 8: AUTH (1 Test)",
+      "item": [
+        {
+          "name": "8.1 - Logout Notification",
+          "request": {
+            "method": "POST",
+            "url": "http://localhost:3000/api/auth/logout",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{USER_TOKEN}}"
+              }
+            ],
+            "description": "✅ Expected: User gets 'You have logged out' notification"
+          }
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "EMPLOYER_TOKEN",
+      "value": "paste_employer_token_here"
+    },
+    {
+      "key": "WORKER_TOKEN",
+      "value": "paste_worker_token_here"
+    },
+    {
+      "key": "JOB_ID",
+      "value": "paste_job_id_here"
+    },
+    {
+      "key": "APPLICATION_ID",
+      "value": "paste_application_id_here"
+    },
+    {
+      "key": "BUSINESS_ID",
+      "value": "paste_business_id_here"
+    },
+    {
+      "key": "SHIFT_ID",
+      "value": "paste_shift_id_here"
+    },
+    {
+      "key": "SWAP_ID",
+      "value": "paste_swap_id_here"
+    },
+    {
+      "key": "CONVERSATION_ID",
+      "value": "paste_conversation_id_here"
+    },
+    {
+      "key": "ORDER_ID",
+      "value": "paste_order_id_here"
+    }
+  ]
+}

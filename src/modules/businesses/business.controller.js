@@ -4,6 +4,7 @@ const User = require('../users/user.model');
 const catchAsync = require('../../shared/utils/catchAsync');
 const AppError = require('../../shared/utils/appError');
 const { createBusiness } = require('./createBusiness');
+const notificationUtils = require('../notification/notification.utils');
 const {
   ensureBusinessAccess,
   getAccessibleBusinessIds,
@@ -240,6 +241,23 @@ exports.createBusiness = catchAsync(async (req, res) => {
     ...req.body,
     owner: req.user._id
   });
+
+  // SEND NOTIFICATION - Business Created
+  try {
+    await notificationUtils.sendTemplatedNotification(
+      req.user._id.toString(),
+      "businessCreated",
+      [business.name || business.businessName],
+      {
+        data: {
+          businessId: business._id.toString()
+        }
+      }
+    );
+  } catch (error) {
+    console.error("Notification error:", error.message);
+  }
+
   res.status(201).json({ status: 'success', data: business });
 });
 
@@ -269,6 +287,23 @@ exports.updateBusiness = catchAsync(async (req, res) => {
 
   Object.assign(business, req.body);
   await business.save();
+
+  // SEND NOTIFICATION - Business Updated
+  try {
+    await notificationUtils.sendTemplatedNotification(
+      req.user._id.toString(),
+      "businessUpdated",
+      [business.name || business.businessName],
+      {
+        data: {
+          businessId: business._id.toString()
+        }
+      }
+    );
+  } catch (error) {
+    console.error("Notification error:", error.message);
+  }
+
   res.status(200).json({ status: 'success', data: business });
 });
 
@@ -372,6 +407,24 @@ exports.manageTeamMember = {
     // Populate the user data before sending response
     await member.populate('user', 'firstName lastName email');
     
+    // SEND NOTIFICATION - Team Member Added
+    try {
+      const memberName = name || `${user.firstName} ${user.lastName}`.trim();
+      await notificationUtils.sendTemplatedNotification(
+        user._id.toString(),
+        "teamMemberAdded",
+        [memberName, business.name || business.businessName],
+        {
+          data: {
+            businessId: business._id.toString(),
+            memberId: member._id.toString()
+          }
+        }
+      );
+    } catch (error) {
+      console.error("Notification error:", error.message);
+    }
+    
     console.log('📤 Sending response with populated member data');
     
     res.status(201).json({ status: 'success', data: member });
@@ -390,6 +443,7 @@ exports.manageTeamMember = {
     if (!member) {
       throw new AppError('Team member not found', 404);
     }
+
     res.status(200).json({ status: 'success', data: member });
   }),
   remove: catchAsync(async (req, res) => {
@@ -405,6 +459,26 @@ exports.manageTeamMember = {
     if (!deleted) {
       throw new AppError('Team member not found', 404);
     }
+
+    // SEND NOTIFICATION - Team Member Removed
+    try {
+      if (deleted.user) {
+        const memberName = deleted.name || deleted.email;
+        await notificationUtils.sendTemplatedNotification(
+          deleted.user.toString(),
+          "teamMemberRemoved",
+          [memberName, business.name || business.businessName],
+          {
+            data: {
+              businessId: business._id.toString()
+            }
+          }
+        );
+      }
+    } catch (error) {
+      console.error("Notification error:", error.message);
+    }
+
     res.status(204).json({ status: 'success' });
   })
 };

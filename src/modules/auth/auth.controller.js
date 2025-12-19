@@ -3,6 +3,7 @@ const catchAsync = require('../../shared/utils/catchAsync');
 const AppError = require('../../shared/utils/appError');
 const { getUserPermissions } = require('../../shared/middlewares/permissionMiddleware');
 const TeamMember = require('../businesses/teamMember.model');
+const notificationUtils = require('../notification/notification.utils');
 
 exports.signup = catchAsync(async (req, res) => {
   const data = await authService.signup(req.body);
@@ -24,6 +25,27 @@ exports.me = catchAsync(async (req, res) => {
 });
 
 exports.logout = (req, res) => {
+  // SEND NOTIFICATION - User Logged Out
+  try {
+    const userId = req.user?._id;
+    if (userId) {
+      notificationUtils.sendTemplatedNotification(
+        userId.toString(),
+        "logout",
+        [req.user.firstName || "User"],
+        {
+          data: {
+            timestamp: new Date().toISOString()
+          }
+        }
+      ).catch(error => {
+        console.error("Notification error:", error.message);
+      });
+    }
+  } catch (error) {
+    console.error("Logout notification error:", error.message);
+  }
+  
   authService.logout(res); // no DB needed
 };
 

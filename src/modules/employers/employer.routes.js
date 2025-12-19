@@ -6,7 +6,7 @@ const { protect, restrictTo } = require('../../shared/middlewares/auth.middlewar
 
 const router = express.Router();
 
-router.use(protect, restrictTo('employer'));
+router.use(protect, restrictTo('employer', 'employee'));
 
 // Debug logging for employer routes
 router.use((req, res, next) => {
@@ -19,6 +19,7 @@ router.get('/me/applications', controller.listEmployerApplications);
 router.patch('/me/applications/:applicationId', (req, res, next) => {
   console.log('🔄 PATCH /me/applications/:applicationId hit');
   console.log('   applicationId:', req.params.applicationId);
+  console.log('   User type:', req.user?.userType);
   console.log('   body:', req.body);
   applicationController.updateApplication(req, res, next);
 });

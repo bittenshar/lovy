@@ -4,6 +4,7 @@ const User = require('../users/user.model');
 const AppError = require('../../shared/utils/appError');
 const catchAsync = require('../../shared/utils/catchAsync');
 const { getAccessibleBusinessIds } = require('../../shared/utils/businessAccess');
+const notificationUtils = require('../notification/notification.utils');
 
 const HOURS_IN_MS = 1000 * 60 * 60;
 
@@ -501,6 +502,7 @@ exports.scheduleAttendance = catchAsync(async (req, res, next) => {
     notes: req.body.notes,
     ...(derivedJobLocation ? { jobLocation: derivedJobLocation } : {})
   });
+
   res.status(201).json({ status: 'success', data: record });
 });
 
@@ -569,6 +571,29 @@ exports.clockIn = catchAsync(async (req, res, next) => {
   }
 
   await record.save();
+
+  // SEND NOTIFICATION - Attendance Check In
+  try {
+    const formattedTime = new Date(record.clockInAt).toLocaleTimeString('en-US', {
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+
+    await notificationUtils.sendTemplatedNotification(
+      req.user._id.toString(),
+      "attendanceCheckIn",
+      [req.user.firstName || record.workerNameSnapshot || 'Worker', formattedTime],
+      {
+        data: {
+          recordId: record._id.toString(),
+          jobTitle: record.jobTitleSnapshot
+        }
+      }
+    );
+  } catch (error) {
+    console.error("Notification error:", error.message);
+  }
+
   res.status(200).json({ status: 'success', data: record });
 });
 
@@ -640,6 +665,30 @@ exports.clockOut = catchAsync(async (req, res, next) => {
   }
 
   await record.save();
+
+  // SEND NOTIFICATION - Attendance Check Out
+  try {
+    const formattedTime = new Date(record.clockOutAt).toLocaleTimeString('en-US', {
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+
+    await notificationUtils.sendTemplatedNotification(
+      req.user._id.toString(),
+      "attendanceCheckOut",
+      [req.user.firstName || record.workerNameSnapshot || 'Worker', formattedTime],
+      {
+        data: {
+          recordId: record._id.toString(),
+          totalHours: record.totalHours,
+          earnings: record.earnings
+        }
+      }
+    );
+  } catch (error) {
+    console.error("Notification error:", error.message);
+  }
+
   res.status(200).json({ status: 'success', data: record });
 });
 
@@ -762,6 +811,7 @@ exports.markComplete = catchAsync(async (req, res, next) => {
     }
   }
   await record.save();
+
   const dto = mapRecordToManagementView(
     record.toObject({ virtuals: true })
   );

@@ -11,13 +11,12 @@ const attendanceRoutes = require('../modules/attendance/attendance.routes');
 const shiftRoutes = require('../modules/shifts/shift.routes');
 const shiftController = require('../modules/shifts/shift.controller');
 const { protect: protectAuth } = require('../shared/middlewares/auth.middleware');
-const notificationRoutes = require('../modules/notifications/notification.routes');
 const conversationRoutes = require('../modules/conversations/conversation.routes');
-const messageRoutes = require('../modules/messages/message.routes');
 const budgetRoutes = require('../modules/budgets/budget.routes');
 const paymentRoutes = require('../modules/payments/payment.routes');
 const subscriptionRoutes = require('../modules/subscriptions/subscription.routes');
 const adminTokenRoutes = require('./admin-token.routes');
+const notificationRoutes = require('../modules/notification/notification.routes');
 
 const router = express.Router();
 const shiftsRouter = express.Router();
@@ -39,11 +38,10 @@ router.use('/applications', applicationRoutes);
 router.use('/attendance', attendanceRoutes);
 router.use('/shift-swaps', shiftRoutes);
 router.use('/shifts', shiftsRouter);
-router.use('/notifications', notificationRoutes);
 router.use('/conversations', conversationRoutes);
-router.use('/messages', messageRoutes);
 router.use('/budget', budgetRoutes);
 router.use('/payments', paymentRoutes);
 router.use('/subscriptions', subscriptionRoutes);
+router.use('/notifications', notificationRoutes);
 
 module.exports = router;

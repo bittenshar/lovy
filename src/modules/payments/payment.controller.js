@@ -7,6 +7,7 @@ const Subscription = require('../subscriptions/subscription.model');
 const User = require('../users/user.model');
 const AppError = require('../../shared/utils/appError');
 const catchAsync = require('../../shared/utils/catchAsync');
+const notificationUtils = require('../notification/notification.utils');
 
 const PREMIUM_PLAN_PRICING = Object.freeze({
   monthly: 29900,
@@ -196,6 +197,26 @@ exports.verifyRazorpayPayment = catchAsync(async (req, res, next) => {
 
   await payment.save();
 
+  // SEND NOTIFICATION - Payment Status
+  try {
+    const templateName = payment.status === 'succeeded' ? 'paymentProcessed' : 'paymentFailed';
+    const amount = `${payment.currency} ${(payment.amount / 100).toFixed(2)}`;
+    
+    await notificationUtils.sendTemplatedNotification(
+      payment.employer.toString(),
+      templateName,
+      [amount],
+      {
+        data: {
+          paymentId: payment._id.toString(),
+          orderId: orderId
+        }
+      }
+    );
+  } catch (error) {
+    console.error("Notification error:", error.message);
+  }
+
   res.status(200).json({
     status: 'success',
     data: { payment }
@@ -370,6 +391,27 @@ exports.verifyPremiumPayment = catchAsync(async (req, res, next) => {
     },
     { new: true, upsert: true }
   );
+
+  // SEND NOTIFICATION - Premium Payment Status
+  try {
+    const templateName = payment.status === 'succeeded' ? 'paymentProcessed' : 'paymentFailed';
+    const amount = `${payment.currency} ${(payment.amount / 100).toFixed(2)}`;
+    
+    await notificationUtils.sendTemplatedNotification(
+      req.user._id.toString(),
+      templateName,
+      [amount],
+      {
+        data: {
+          paymentId: payment._id.toString(),
+          planType: planType,
+          subscriptionStatus: subscription.status
+        }
+      }
+    );
+  } catch (error) {
+    console.error("Notification error:", error.message);
+  }
 
   res.status(200).json({
     status: 'success',

@@ -41,12 +41,13 @@ exports.notifyNewMessage = async (recipientId, senderName, messagePreview, conve
       }
     );
     
-    console.error(`📱 [CONV-FCM] Result - Sent: ${result.sent}, Failed: ${result.failed}`);
+    console.error(`📱 [CONV-FCM] Result - Success: ${result.success}, Sent: ${result.sent}, Failed: ${result.failed}`);
     console.error('📱 [CONV-FCM] ===== NOTIFY NEW MESSAGE END =====\n');
     
     return result;
   } catch (error) {
     console.error('❌ [CONV-FCM] Error notifying new message:', error.message);
+    console.error('❌ [CONV-FCM] Stack:', error.stack);
     return {
       success: false,
       error: error.message,

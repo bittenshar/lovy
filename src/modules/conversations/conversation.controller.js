@@ -227,12 +227,15 @@ exports.sendMessage = catchAsync(async (req, res, next) => {
   console.error('📨 [MSG] Recipient IDs:', recipients.map(r => r.toString()));
 
   // Send notification to each recipient using dedicated conversation FCM utility
+  console.error('📱 [CONV-FCM] Starting FCM notifications for', recipients.length, 'recipient(s)');
   for (const recipientId of recipients) {
     try {
+      console.error('📱 [CONV-FCM] Notifying recipient:', recipientId.toString());
       const senderDisplayName = message.sender?.firstName || message.sender?.email || 'Unknown';
       const messagePreview = req.body.body.slice(0, 50);
       const messageFull = req.body.body.slice(0, 150);
 
+      console.error('📱 [CONV-FCM] Sender:', senderDisplayName, 'Preview:', messagePreview);
       const fcmResult = await conversationFcmUtils.notifyNewMessage(
         recipientId.toString(),
         senderDisplayName,
@@ -242,15 +245,18 @@ exports.sendMessage = catchAsync(async (req, res, next) => {
         messageFull
       );
       
+      console.error('📱 [CONV-FCM] Result:', JSON.stringify(fcmResult));
       if (fcmResult.success && fcmResult.sent > 0) {
         console.error('✅ [CONV-FCM] FCM notification sent to:', recipientId);
       } else {
         console.error('⚠️  [CONV-FCM] FCM notification may have failed for:', recipientId);
+        console.error('⚠️  [CONV-FCM] Success:', fcmResult.success, 'Sent:', fcmResult.sent);
       }
       
     } catch (notificationError) {
-      console.error('❌ [CONV-FCM] Error sending notification to:', recipientId.toString());
+      console.error('❌ [CONV-FCM] Exception caught for:', recipientId.toString());
       console.error('❌ [CONV-FCM] Error:', notificationError.message);
+      console.error('❌ [CONV-FCM] Stack:', notificationError.stack);
     }
   }
 

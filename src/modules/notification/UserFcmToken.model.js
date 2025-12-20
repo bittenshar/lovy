@@ -15,6 +15,12 @@ const userFcmTokenSchema = new mongoose.Schema(
     deviceType: {
       type: String,
       enum: ["android", "ios", "web"],
+      default: "web",
+    },
+    isActive: {
+      type: Boolean,
+      default: true,
+      index: true,
     },
   },
   { timestamps: true }

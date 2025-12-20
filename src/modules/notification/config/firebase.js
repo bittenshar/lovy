@@ -5,18 +5,50 @@ const fs = require("fs");
 // Load service account from root directory or environment variable
 let serviceAccount;
 let firebaseInitialized = false;
-const serviceAccountPath = path.join(__dirname, "../../../../firebase-service-account.json");
+
+// Try multiple path strategies
+const possiblePaths = [
+  // Strategy 1: Relative to current file (src/modules/notification/config/firebase.js)
+  path.resolve(__dirname, "../../../../firebase-service-account.json"),
+  // Strategy 2: Relative to process.cwd() (project root)
+  path.resolve(process.cwd(), "firebase-service-account.json"),
+  // Strategy 3: Absolute path if provided
+  "/app/firebase-service-account.json"
+];
+
+console.error('[FIREBASE-INIT] Starting Firebase initialization...');
+console.error('[FIREBASE-INIT] Current working directory:', process.cwd());
+console.error('[FIREBASE-INIT] __dirname:', __dirname);
 
 try {
-  // Try loading from root directory (local development)
-  if (fs.existsSync(serviceAccountPath)) {
-    serviceAccount = require(serviceAccountPath);
-    admin.initializeApp({
-      credential: admin.credential.cert(serviceAccount),
-    });
-    firebaseInitialized = true;
+  let foundPath = null;
+  
+  // Try loading from file first
+  for (const filePath of possiblePaths) {
+    console.error(`[FIREBASE-INIT] Trying path: ${filePath}`);
+    if (fs.existsSync(filePath)) {
+      console.error(`[FIREBASE-INIT] ✅ Found firebase config at: ${filePath}`);
+      foundPath = filePath;
+      break;
+    }
+  }
+
+  if (foundPath) {
+    try {
+      serviceAccount = JSON.parse(fs.readFileSync(foundPath, 'utf8'));
+      console.error('[FIREBASE-INIT] ✅ Firebase service account loaded from file');
+      admin.initializeApp({
+        credential: admin.credential.cert(serviceAccount),
+      });
+      firebaseInitialized = true;
+      console.error('[FIREBASE-INIT] ✅ Firebase Admin initialized successfully');
+    } catch (fileError) {
+      console.warn(`[FIREBASE-INIT] ⚠️  Failed to parse firebase config file: ${fileError.message}`);
+      throw fileError;
+    }
   } else if (process.env.FIREBASE_PROJECT_ID) {
     // Fallback: construct from environment variables (for deployment)
+    console.error('[FIREBASE-INIT] No file found, using environment variables...');
     serviceAccount = {
       type: "service_account",
       project_id: process.env.FIREBASE_PROJECT_ID,
@@ -33,12 +65,14 @@ try {
       credential: admin.credential.cert(serviceAccount),
     });
     firebaseInitialized = true;
+    console.error('[FIREBASE-INIT] ✅ Firebase Admin initialized from environment variables');
   } else {
     console.warn("⚠️  Firebase service account not configured. Push notifications will be disabled.");
     firebaseInitialized = false;
   }
 } catch (error) {
   console.warn(`⚠️  Firebase initialization failed: ${error.message}. Push notifications will be disabled.`);
+  console.error('[FIREBASE-INIT] Error stack:', error.stack);
   firebaseInitialized = false;
 }
 

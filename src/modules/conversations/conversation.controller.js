@@ -307,9 +307,9 @@ exports.fcmHealthCheck = catchAsync(async (req, res, next) => {
       });
     }
 
-    // Get FCM tokens
-    const FCMToken = require('../../../models/fcmToken');
-    const tokens = await FCMToken.find({ userId: userId });
+    // Get FCM tokens - use UserFcmToken model
+    const UserFcmToken = require('../notification/UserFcmToken.model');
+    const tokens = await UserFcmToken.find({ userId: userId });
 
     // Check Firebase
     const firebaseConfig = require('../notification/config/firebase');

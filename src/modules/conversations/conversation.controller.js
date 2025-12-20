@@ -12,10 +12,8 @@ exports.listConversations = catchAsync(async (req, res) => {
     .sort({ updatedAt: -1 });
   console.error('📥 [CONV] Found', conversations.length, 'conversations');
   
-  const User = require('../users/user.model');
-  
-  // Convert Mongoose documents to plain objects with personalized titles
-  const conversationsObj = await Promise.all(conversations.map(async (conv) => {
+  // Convert Mongoose documents to plain objects
+  const conversationsObj = conversations.map(conv => {
     const obj = conv.toObject();
     
     // Handle Mongoose Map type - convert to plain object
@@ -31,22 +29,9 @@ exports.listConversations = catchAsync(async (req, res) => {
       obj.unreadCount = unreadMap;
     }
     
-    // Set personalized title - show other participant's name
-    try {
-      const otherParticipantId = obj.participants.find(p => p.toString() !== req.user._id.toString());
-      if (otherParticipantId) {
-        const otherUser = await User.findById(otherParticipantId);
-        if (otherUser) {
-          obj.title = otherUser.firstName || otherUser.email;
-          console.error('📥 [CONV] Personalized title for', req.user._id, ':', obj.title);
-        }
-      }
-    } catch (err) {
-      console.error('❌ [CONV] Error personalizing title:', err.message);
-    }
-    
+    console.error('📥 [CONV] Conversation title:', obj.title);
     return obj;
-  }));
+  });
   
   console.error('📥 [CONV] Conversations:', JSON.stringify(conversationsObj, null, 2));
   res.status(200).json({ status: 'success', data: conversationsObj });
@@ -91,17 +76,22 @@ exports.createConversation = catchAsync(async (req, res, next) => {
   if (req.body.title) {
     title = req.body.title;
   } else if (participants.length === 2) {
-    // For one-on-one: use both names (current user & other user)
+    // For one-on-one: show BOTH names (e.g., "devesh & daksh")
     try {
       const User = require('../users/user.model');
-      const otherParticipantId = participants.find(p => p !== req.user._id.toString());
-      if (otherParticipantId) {
-        const otherUser = await User.findById(otherParticipantId);
-        if (otherUser) {
-          title = otherUser.firstName || otherUser.email || 'User';
-          console.error('📝 [CONV] Generated title - other participant name:', title);
-        }
-      }
+      
+      // Get both participant names
+      const participant1Id = participants[0];
+      const participant2Id = participants[1];
+      
+      const user1 = await User.findById(participant1Id);
+      const user2 = await User.findById(participant2Id);
+      
+      const name1 = user1?.firstName || user1?.email || 'User';
+      const name2 = user2?.firstName || user2?.email || 'User';
+      
+      title = `${name1} & ${name2}`;
+      console.error('📝 [CONV] Generated title with both names:', title);
     } catch (err) {
       console.error('❌ [CONV] Error generating title:', err.message);
     }

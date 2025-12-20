@@ -217,6 +217,7 @@ exports.deleteToken = async (req, res) => {
   const tokens = await UserFcmToken.find({ userId });
 
   if (!tokens.length) {
+    
     return res.status(404).json({ message: "No tokens found for user" });
   }
 

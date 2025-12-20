@@ -7,6 +7,106 @@ const admin = firebaseConfig.admin;
 const firebaseInitialized = firebaseConfig.isInitialized;
 
 /**
+ * Store FCM token for user (called on login)
+ * @param {string} userId - User ID
+ * @param {string} token - FCM token
+ * @param {string} deviceType - Device type ('android', 'ios', 'web')
+ * @returns {Promise<object>} - Stored token data
+ */
+exports.storeFcmToken = async (userId, token, deviceType = 'web') => {
+  try {
+    if (!userId || !token) {
+      throw new Error('UserId and token are required');
+    }
+
+    // Check if token already exists for this user
+    const existingToken = await UserFcmToken.findOne({
+      userId,
+      'tokens.token': token
+    });
+
+    if (existingToken) {
+      // Update existing token
+      const result = await UserFcmToken.findOneAndUpdate(
+        { userId, 'tokens.token': token },
+        {
+          $set: {
+            'tokens.$.isActive': true,
+            'tokens.$.deviceType': deviceType
+          }
+        },
+        { new: true }
+      );
+      console.log(`✅ FCM token updated for user ${userId}`);
+      return { success: true, message: 'Token updated', data: result };
+    }
+
+    // Create or update user FCM token record
+    const result = await UserFcmToken.findOneAndUpdate(
+      { userId },
+      {
+        $push: {
+          tokens: {
+            token,
+            deviceType,
+            isActive: true
+          }
+        }
+      },
+      { upsert: true, new: true }
+    );
+
+    console.log(`✅ FCM token stored for user ${userId}`);
+    return { success: true, message: 'Token stored', data: result };
+  } catch (error) {
+    console.error('❌ Error storing FCM token:', error.message);
+    return { success: false, error: error.message };
+  }
+};
+
+/**
+ * Delete FCM token for user (called on logout)
+ * @param {string} userId - User ID
+ * @param {string} token - FCM token (optional, deletes all if not provided)
+ * @returns {Promise<object>} - Result of deletion
+ */
+exports.deleteFcmToken = async (userId, token = null) => {
+  try {
+    if (!userId) {
+      throw new Error('UserId is required');
+    }
+
+    if (token) {
+      // Delete specific token
+      const result = await UserFcmToken.findOneAndUpdate(
+        { userId },
+        {
+          $pull: {
+            tokens: { token }
+          }
+        },
+        { new: true }
+      );
+      console.log(`✅ FCM token deleted for user ${userId}`);
+      return { success: true, message: 'Token deleted', data: result };
+    } else {
+      // Delete all tokens for user on logout
+      const result = await UserFcmToken.updateOne(
+        { userId },
+        {
+          $set: { tokens: [] }
+        }
+      );
+      console.log(`✅ All FCM tokens deleted for user ${userId}`);
+      return { success: true, message: 'All tokens deleted', data: result };
+    }
+  } catch (error) {
+    console.error('❌ Error deleting FCM token:', error.message);
+    return { success: false, error: error.message };
+  }
+};
+
+/**
  * Send notification to a specific user
  * @param {string} userId - User ID
  * @param {object} notificationData - Notification details

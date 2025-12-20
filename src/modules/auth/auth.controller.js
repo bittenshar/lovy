@@ -25,6 +25,19 @@ exports.me = catchAsync(async (req, res) => {
 });
 
 exports.logout = (req, res) => {
+  // Delete FCM tokens for user
+  try {
+    const userId = req.user?._id;
+    if (userId) {
+      // Delete all FCM tokens for this user
+      notificationUtils.deleteFcmToken(userId.toString()).catch(error => {
+        console.error("FCM token deletion error:", error.message);
+      });
+    }
+  } catch (error) {
+    console.error("Logout FCM deletion error:", error.message);
+  }
+
   // SEND NOTIFICATION - User Logged Out
   try {
     const userId = req.user?._id;

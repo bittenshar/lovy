@@ -4,6 +4,7 @@ const WorkerProfile = require('../workers/workerProfile.model');
 const EmployerProfile = require('../employers/employerProfile.model');
 const Business = require('../businesses/business.model');
 const AppError = require('../../shared/utils/appError');
+const notificationUtils = require('../notification/notification.utils');
 
 const ensureJwtSecret = () => {
   if (!process.env.JWT_SECRET) {
@@ -93,7 +94,7 @@ exports.signup = async (payload) => {
   return buildUserResponse(user);
 };
 
-exports.login = async ({ email, password, fcmToken }) => {
+exports.login = async ({ email, password, fcmToken, deviceType = 'web' }) => {
   const user = await User.findOne({ email: email.toLowerCase() }).select('+password');
   if (!user) {
     throw new AppError('Invalid credentials', 401);
@@ -103,24 +104,13 @@ exports.login = async ({ email, password, fcmToken }) => {
     throw new AppError('Invalid credentials', 401);
   }
   
-  // Update FCM token if provided
+  // Store FCM token using utility if provided
   if (fcmToken) {
-    // Initialize fcmTokens as array if it doesn't exist
-    if (!user.fcmTokens) {
-      user.fcmTokens = [];
-    }
-    
-    // Convert to array if it's a string (backward compatibility)
-    if (!Array.isArray(user.fcmTokens)) {
-      user.fcmTokens = [user.fcmTokens];
-    }
-    
-    // Add new token if not already present
-    if (!user.fcmTokens.includes(fcmToken)) {
-      user.fcmTokens.push(fcmToken);
-      console.log(`✅ FCM token added for user ${user._id}`);
-    } else {
-      console.log(`ℹ️ FCM token already registered for user ${user._id}`);
+    try {
+      await notificationUtils.storeFcmToken(user._id.toString(), fcmToken, deviceType);
+    } catch (error) {
+      console.error('Error storing FCM token:', error.message);
+      // Continue with login even if FCM token storage fails
     }
   }
   

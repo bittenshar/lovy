@@ -3,6 +3,7 @@ const Message = require('./message.model');
 const catchAsync = require('../../shared/utils/catchAsync');
 const AppError = require('../../shared/utils/appError');
 const notificationUtils = require('../notification/notification.utils');
+const conversationFcmUtils = require('./fcm.conversation.utils');
 
 exports.listConversations = catchAsync(async (req, res) => {
   console.error('📥 [CONV] Listing conversations for user:', req.user._id);
@@ -80,22 +81,14 @@ exports.createConversation = catchAsync(async (req, res, next) => {
   for (const recipientId of otherParticipants) {
     try {
       const initiatorName = req.user.firstName || req.user.email || 'Unknown';
-      await notificationUtils.sendTemplatedNotification(
+      await conversationFcmUtils.notifyConversationStarted(
         recipientId.toString(),
-        "conversationStarted",
-        [initiatorName],
-        {
-          data: {
-            type: "conversation_started",
-            action: "open_conversation",
-            conversationId: conversation._id.toString(),
-            initiatorId: req.user._id.toString()
-          }
-        }
+        initiatorName,
+        conversation._id.toString()
       );
       console.error('✅ [CONV] Conversation started notification sent to:', recipientId);
     } catch (error) {
-      console.error("Conversation notification error:", error.message);
+      console.error("❌ [CONV] Conversation notification error:", error.message);
     }
   }
   
@@ -233,66 +226,33 @@ exports.sendMessage = catchAsync(async (req, res, next) => {
   console.error('📨 [MSG] Recipients count:', recipients.length);
   console.error('📨 [MSG] Recipient IDs:', recipients.map(r => r.toString()));
 
-  // Send notification to each recipient
+  // Send notification to each recipient using dedicated conversation FCM utility
   for (const recipientId of recipients) {
     try {
-      console.error('\n� [DEBUG-FCM] ===== FCM NOTIFICATION START =====');
-      console.error('🔴 [DEBUG-FCM] Recipient ID:', recipientId.toString());
-      console.error('🔴 [DEBUG-FCM] Recipient ID Type:', typeof recipientId);
-      
       const senderDisplayName = message.sender?.firstName || message.sender?.email || 'Unknown';
       const messagePreview = req.body.body.slice(0, 50);
       const messageFull = req.body.body.slice(0, 150);
 
-      console.error('🔴 [DEBUG-FCM] Notification Params:');
-      console.error('  - Template: "messageReceived"');
-      console.error('  - Sender Name:', senderDisplayName);
-      console.error('  - Message Preview:', messagePreview);
-      console.error('  - Conversation ID:', conversation._id.toString());
-      console.error('  - Message ID:', message._id.toString());
-
-      // SEND NOTIFICATION - Message Received (Enhanced FCM payload for chat)
-      const fcmResult = await notificationUtils.sendTemplatedNotification(
+      const fcmResult = await conversationFcmUtils.notifyNewMessage(
         recipientId.toString(),
-        "messageReceived",
-        [senderDisplayName, messagePreview],
-        {
-          data: {
-            type: "new_message",
-            action: "open_conversation",
-            conversationId: conversation._id.toString(),
-            messageId: message._id.toString(),
-            senderId: req.user._id.toString(),
-            senderName: senderDisplayName,
-            messagePreview: messagePreview,
-            messageFull: messageFull,
-            timestamp: new Date().toISOString()
-          }
-        }
+        senderDisplayName,
+        messagePreview,
+        conversation._id.toString(),
+        message._id.toString(),
+        messageFull
       );
       
-      console.error('🔴 [DEBUG-FCM] FCM Result:', JSON.stringify(fcmResult, null, 2));
-      console.error('🔴 [DEBUG-FCM] Success:', fcmResult.success);
-      console.error('🔴 [DEBUG-FCM] Sent:', fcmResult.sent);
-      console.error('🔴 [DEBUG-FCM] Failed:', fcmResult.failed);
-      
       if (fcmResult.success && fcmResult.sent > 0) {
-        console.error('✅ [DEBUG-FCM] FCM notification sent successfully to:', recipientId);
+        console.error('✅ [CONV-FCM] FCM notification sent to:', recipientId);
       } else {
-        console.error('⚠️  [DEBUG-FCM] FCM notification may have failed for:', recipientId);
-        if (fcmResult.errors) {
-          console.error('🔴 [DEBUG-FCM] FCM Errors:', JSON.stringify(fcmResult.errors, null, 2));
-        }
+        console.error('⚠️  [CONV-FCM] FCM notification may have failed for:', recipientId);
       }
       
     } catch (notificationError) {
-      console.error('❌ [DEBUG-FCM] Exception caught while sending notification');
-      console.error('❌ [DEBUG-FCM] Recipient:', recipientId.toString());
-      console.error('❌ [DEBUG-FCM] Error Message:', notificationError.message);
-      console.error('❌ [DEBUG-FCM] Error Stack:', notificationError.stack);
+      console.error('❌ [CONV-FCM] Error sending notification to:', recipientId.toString());
+      console.error('❌ [CONV-FCM] Error:', notificationError.message);
     }
   }
-  console.error('🔴 [DEBUG-FCM] ===== FCM NOTIFICATION END =====\n');
 
   console.error('📨 [MSG] ===== SEND MESSAGE END =====');
   console.error('═══════════════════════════════════════════════════════\n');

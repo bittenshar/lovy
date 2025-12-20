@@ -77,9 +77,11 @@ exports.createConversation = catchAsync(async (req, res, next) => {
     const otherParticipantId = participants.find(p => p !== req.user._id.toString());
     if (otherParticipantId) {
       try {
-        const otherUser = await require('../../auth/user.model').findById(otherParticipantId);
+        const User = require('../users/user.model');
+        const otherUser = await User.findById(otherParticipantId);
         if (otherUser) {
           title = otherUser.firstName || otherUser.email || 'Conversation';
+          console.error('📝 [CONV] Generated title from other participant:', title);
         }
       } catch (err) {
         console.error('❌ [CONV] Error fetching other user for title:', err.message);
@@ -88,6 +90,7 @@ exports.createConversation = catchAsync(async (req, res, next) => {
   } else if (req.body.groupName) {
     title = req.body.groupName;
   }
+  console.error('📝 [CONV] Conversation title:', title);
   
   const conversation = await Conversation.create({
     participants,

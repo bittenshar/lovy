@@ -6,13 +6,13 @@ const router = express.Router();
 
 router.use(protect);
 
+// FCM Health Check endpoint - must be before /:conversationId to avoid pattern matching
+router.get('/fcm-check/:userId', controller.fcmHealthCheck);
+
 router.get('/', controller.listConversations);
 router.post('/', controller.createConversation);
 router.get('/:conversationId/messages', controller.listMessages);
 router.post('/:conversationId/messages', controller.sendMessage);
 router.patch('/:conversationId/read', controller.markConversationRead);
-
-// FCM Health Check endpoint
-router.get('/fcm-check/:userId', controller.fcmHealthCheck);
 
 module.exports = router;

@@ -236,15 +236,23 @@ exports.sendMessage = catchAsync(async (req, res, next) => {
   // Send notification to each recipient
   for (const recipientId of recipients) {
     try {
-      console.log('\n📨 [MSG] ===== FCM NOTIFICATION START =====');
-      console.log('📨 [MSG] Sending notification to recipient:', recipientId);
+      console.log('\n� [DEBUG-FCM] ===== FCM NOTIFICATION START =====');
+      console.log('🔴 [DEBUG-FCM] Recipient ID:', recipientId.toString());
+      console.log('🔴 [DEBUG-FCM] Recipient ID Type:', typeof recipientId);
       
       const senderDisplayName = message.sender?.firstName || message.sender?.email || 'Unknown';
       const messagePreview = req.body.body.slice(0, 50);
       const messageFull = req.body.body.slice(0, 150);
 
+      console.log('🔴 [DEBUG-FCM] Notification Params:');
+      console.log('  - Template: "messageReceived"');
+      console.log('  - Sender Name:', senderDisplayName);
+      console.log('  - Message Preview:', messagePreview);
+      console.log('  - Conversation ID:', conversation._id.toString());
+      console.log('  - Message ID:', message._id.toString());
+
       // SEND NOTIFICATION - Message Received (Enhanced FCM payload for chat)
-      await notificationUtils.sendTemplatedNotification(
+      const fcmResult = await notificationUtils.sendTemplatedNotification(
         recipientId.toString(),
         "messageReceived",
         [senderDisplayName, messagePreview],
@@ -263,13 +271,28 @@ exports.sendMessage = catchAsync(async (req, res, next) => {
         }
       );
       
-      console.log('✅ [MSG] FCM notification sent successfully to:', recipientId);
+      console.log('🔴 [DEBUG-FCM] FCM Result:', JSON.stringify(fcmResult, null, 2));
+      console.log('🔴 [DEBUG-FCM] Success:', fcmResult.success);
+      console.log('🔴 [DEBUG-FCM] Sent:', fcmResult.sent);
+      console.log('🔴 [DEBUG-FCM] Failed:', fcmResult.failed);
+      
+      if (fcmResult.success && fcmResult.sent > 0) {
+        console.log('✅ [DEBUG-FCM] FCM notification sent successfully to:', recipientId);
+      } else {
+        console.log('⚠️  [DEBUG-FCM] FCM notification may have failed for:', recipientId);
+        if (fcmResult.errors) {
+          console.log('🔴 [DEBUG-FCM] FCM Errors:', JSON.stringify(fcmResult.errors, null, 2));
+        }
+      }
       
     } catch (notificationError) {
-      console.log('⚠️  [MSG] Failed to send notification to', recipientId);
-      console.log('⚠️  [MSG] Error:', notificationError.message);
+      console.log('❌ [DEBUG-FCM] Exception caught while sending notification');
+      console.log('❌ [DEBUG-FCM] Recipient:', recipientId.toString());
+      console.log('❌ [DEBUG-FCM] Error Message:', notificationError.message);
+      console.log('❌ [DEBUG-FCM] Error Stack:', notificationError.stack);
     }
   }
+  console.log('🔴 [DEBUG-FCM] ===== FCM NOTIFICATION END =====\n');
 
   console.log('📨 [MSG] ===== SEND MESSAGE END =====');
   console.log('═══════════════════════════════════════════════════════\n');

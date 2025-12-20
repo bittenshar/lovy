@@ -1,0 +1,198 @@
+{
+  "info": {
+    "name": "FCM Messaging Debug Tests",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "1️⃣ Get Conversations",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{AUTH_TOKEN}}",
+            "type": "text"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "{{BASE_URL}}/api/conversations",
+          "host": [
+            "{{BASE_URL}}"
+          ],
+          "path": [
+            "api",
+            "conversations"
+          ]
+        },
+        "description": "Get all conversations for current user\n\n🔴 [DEBUG-FLUTTER] logs should show auth token and response status"
+      },
+      "response": []
+    },
+    {
+      "name": "2️⃣ Create Conversation",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{AUTH_TOKEN}}",
+            "type": "text"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json",
+            "type": "text"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"participants\": [\"{{RECIPIENT_USER_ID}}\"]\n}"
+        },
+        "url": {
+          "raw": "{{BASE_URL}}/api/conversations",
+          "host": [
+            "{{BASE_URL}}"
+          ],
+          "path": [
+            "api",
+            "conversations"
+          ]
+        },
+        "description": "Create a new conversation with a recipient\n\n📝 [CONV] Creating conversation logs\n🔴 [DEBUG-FCM] Should show conversation started notification being sent\n\nSet variables:\n- RECIPIENT_USER_ID: The ID of the other user"
+      },
+      "response": []
+    },
+    {
+      "name": "3️⃣ Get Messages in Conversation",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{AUTH_TOKEN}}",
+            "type": "text"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "{{BASE_URL}}/api/conversations/{{CONVERSATION_ID}}/messages",
+          "host": [
+            "{{BASE_URL}}"
+          ],
+          "path": [
+            "api",
+            "conversations",
+            "{{CONVERSATION_ID}}",
+            "messages"
+          ]
+        },
+        "description": "Get all messages in a conversation\n\n📬 [MSG] GET /conversations/:id/messages logs\n\nSet variables:\n- CONVERSATION_ID: From the create conversation response"
+      },
+      "response": []
+    },
+    {
+      "name": "4️⃣ Send Message (FCM TEST) 🔴",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{AUTH_TOKEN}}",
+            "type": "text"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json",
+            "type": "text"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"body\": \"Test message from FCM debug - Check logs for 🔴 [DEBUG-FCM]\"\n}"
+        },
+        "url": {
+          "raw": "{{BASE_URL}}/api/conversations/{{CONVERSATION_ID}}/messages",
+          "host": [
+            "{{BASE_URL}}"
+          ],
+          "path": [
+            "api",
+            "conversations",
+            "{{CONVERSATION_ID}}",
+            "messages"
+          ]
+        },
+        "description": "Send a message - THIS TRIGGERS FCM NOTIFICATIONS ⚡\n\n🔴 DEBUG OUTPUT TO WATCH FOR:\n\n1. Backend conversation.controller.js:\n   📨 [MSG] ===== SEND MESSAGE START =====\n   ✅ [MSG] Message created successfully\n   🔴 [DEBUG-FCM] ===== FCM NOTIFICATION START =====\n   🔴 [DEBUG-FCM] Recipient ID: <id>\n   🔴 [DEBUG-FCM] FCM Result: { success: true, sent: 1 }\n   ✅ [DEBUG-FCM] FCM notification sent successfully\n\n2. notification.utils.js:\n   🔴 [DEBUG-TEMPLATE] sendTemplatedNotification START\n   🔴 [DEBUG-UTIL] ===== sendToUser START =====\n   🔴 [DEBUG-UTIL] Firebase Initialized: true ← CRITICAL\n   🔴 [DEBUG-UTIL] Found X FCM tokens\n   🔴 [DEBUG-UTIL] Calling admin.messaging().send()...\n   ✅ [DEBUG-UTIL] FCM send successful\n   🔴 [DEBUG-UTIL] FCM Batch Summary:\n     - Total tokens: X\n     - Successfully sent: X\n     - Failed: 0\n\n3. If FCM fails:\n   ❌ [DEBUG-UTIL] FCM error code: <error_code>\n   🔴 [DEBUG-UTIL] FCM error message: <error_message>\n\nSet variables:\n- CONVERSATION_ID: From previous requests"
+      },
+      "response": []
+    },
+    {
+      "name": "5️⃣ Mark Conversation as Read",
+      "request": {
+        "method": "PATCH",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{AUTH_TOKEN}}",
+            "type": "text"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json",
+            "type": "text"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{}"
+        },
+        "url": {
+          "raw": "{{BASE_URL}}/api/conversations/{{CONVERSATION_ID}}/read",
+          "host": [
+            "{{BASE_URL}}"
+          ],
+          "path": [
+            "api",
+            "conversations",
+            "{{CONVERSATION_ID}}",
+            "read"
+          ]
+        },
+        "description": "Mark conversation messages as read\n\n👁️ [CONV] Marking conversation as read logs"
+      },
+      "response": []
+    }
+  ],
+  "variable": [
+    {
+      "key": "BASE_URL",
+      "value": "http://localhost:5000",
+      "type": "string"
+    },
+    {
+      "key": "AUTH_TOKEN",
+      "value": "your_jwt_token_here",
+      "type": "string"
+    },
+    {
+      "key": "CONVERSATION_ID",
+      "value": "conversation_id_from_response",
+      "type": "string"
+    },
+    {
+      "key": "RECIPIENT_USER_ID",
+      "value": "another_users_id",
+      "type": "string"
+    }
+  ]
+}

@@ -18,9 +18,14 @@ const firebaseInitialized = firebaseConfig.isInitialized;
  */
 exports.sendToUser = async (userId, notificationData) => {
   try {
+    console.log('\n🔴 [DEBUG-UTIL] ===== sendToUser START =====');
+    console.log('🔴 [DEBUG-UTIL] User ID:', userId);
+    console.log('🔴 [DEBUG-UTIL] Firebase Initialized:', firebaseInitialized);
+    console.log('🔴 [DEBUG-UTIL] Notification Data:', JSON.stringify(notificationData, null, 2));
+    
     // Skip if Firebase is not initialized
     if (!firebaseInitialized) {
-      console.warn(`Firebase not initialized. Notification for user ${userId} will be skipped.`);
+      console.warn(`🔴 [DEBUG-UTIL] ⚠️  Firebase not initialized. Notification for user ${userId} will be skipped.`);
       return {
         success: false,
         sent: 0,
@@ -36,9 +41,21 @@ exports.sendToUser = async (userId, notificationData) => {
       throw new Error("Title and body are required");
     }
 
+    console.log('🔴 [DEBUG-UTIL] Querying FCM tokens for user:', userId);
     const tokens = await UserFcmToken.find({ userId });
+    console.log('🔴 [DEBUG-UTIL] Found', tokens.length, 'FCM tokens');
+    
+    if (tokens.length > 0) {
+      console.log('🔴 [DEBUG-UTIL] Token Details:');
+      tokens.forEach((t, idx) => {
+        console.log(`  [${idx}] Token: ${t.token.substring(0, 30)}...`);
+        console.log(`  [${idx}] Device Type: ${t.deviceType}`);
+        console.log(`  [${idx}] Active: ${t.isActive}`);
+      });
+    }
 
     if (!tokens.length) {
+      console.log('🔴 [DEBUG-UTIL] ⚠️  No tokens found for user:', userId);
       return {
         success: false,
         sent: 0,
@@ -51,6 +68,7 @@ exports.sendToUser = async (userId, notificationData) => {
 
     for (const t of tokens) {
       try {
+        console.log('\n🔴 [DEBUG-UTIL] Sending to token:', t.token.substring(0, 30) + '...');
         const notification = {
           title: notificationData.title,
           body: notificationData.body
@@ -65,6 +83,12 @@ exports.sendToUser = async (userId, notificationData) => {
           notification,
           data: notificationData.data || {},
         };
+
+        console.log('🔴 [DEBUG-UTIL] Message to send:', JSON.stringify({
+          token: t.token.substring(0, 30) + '...',
+          notification,
+          dataKeys: Object.keys(message.data || {})
+        }, null, 2));
 
         // Platform-specific configurations
         if (t.deviceType === "web" && notificationData.imageUrl) {
@@ -106,21 +130,32 @@ exports.sendToUser = async (userId, notificationData) => {
           };
         }
 
+        console.log('🔴 [DEBUG-UTIL] Calling admin.messaging().send()...');
         const response = await admin.messaging().send(message);
+        console.log('✅ [DEBUG-UTIL] FCM send successful. Response ID:', response);
         responses.push({ token: t.token, status: "sent", response });
       } catch (error) {
-        console.error("FCM error:", error.code);
+        console.error("🔴 [DEBUG-UTIL] FCM error code:", error.code);
+        console.error("🔴 [DEBUG-UTIL] FCM error message:", error.message);
+        console.error("🔴 [DEBUG-UTIL] FCM error:", error);
 
         if (
           error.code === "messaging/registration-token-not-registered" ||
           error.code === "messaging/invalid-registration-token"
         ) {
+          console.log('🔴 [DEBUG-UTIL] Deleting invalid token:', t.token.substring(0, 30) + '...');
           await UserFcmToken.deleteOne({ token: t.token });
         }
 
         errors.push({ token: t.token, error: error.message });
       }
     }
+
+    console.log('🔴 [DEBUG-UTIL] FCM Batch Summary:');
+    console.log('  - Total tokens:', tokens.length);
+    console.log('  - Successfully sent:', responses.length);
+    console.log('  - Failed:', errors.length);
+    console.log('🔴 [DEBUG-UTIL] ===== sendToUser END =====\n');
 
     return {
       success: true,
@@ -130,7 +165,8 @@ exports.sendToUser = async (userId, notificationData) => {
       errors: errors.length > 0 ? errors : undefined
     };
   } catch (error) {
-    console.error("Send notification error:", error);
+    console.error("🔴 [DEBUG-UTIL] Send notification error:", error);
+    console.error("🔴 [DEBUG-UTIL] Error stack:", error.stack);
     return {
       success: false,
       error: error.message
@@ -181,20 +217,40 @@ exports.sendToMultipleUsers = async (userIds, notificationData) => {
  */
 exports.sendTemplatedNotification = async (userId, templateName, templateArgs = [], additionalData = {}) => {
   try {
+    console.log('\n🔴 [DEBUG-TEMPLATE] ===== sendTemplatedNotification START =====');
+    console.log('🔴 [DEBUG-TEMPLATE] User ID:', userId);
+    console.log('🔴 [DEBUG-TEMPLATE] Template Name:', templateName);
+    console.log('🔴 [DEBUG-TEMPLATE] Template Args:', templateArgs);
+    console.log('🔴 [DEBUG-TEMPLATE] Additional Data Keys:', Object.keys(additionalData));
+    
     const template = templates[templateName];
 
     if (!template || typeof template !== "function") {
+      console.log('🔴 [DEBUG-TEMPLATE] ❌ Template not found:', templateName);
+      console.log('🔴 [DEBUG-TEMPLATE] Available templates:', Object.keys(templates));
       throw new Error(`Template '${templateName}' not found`);
     }
 
+    console.log('🔴 [DEBUG-TEMPLATE] ✅ Template found, calling with args...');
+    const templateResult = template(...templateArgs);
+    console.log('🔴 [DEBUG-TEMPLATE] Template result:', JSON.stringify(templateResult, null, 2));
+
     const notificationData = {
-      ...template(...templateArgs),
+      ...templateResult,
       ...additionalData
     };
+    
+    console.log('🔴 [DEBUG-TEMPLATE] Final notification data:', JSON.stringify(notificationData, null, 2));
+    console.log('🔴 [DEBUG-TEMPLATE] Calling sendToUser...');
 
-    return await exports.sendToUser(userId, notificationData);
+    const result = await exports.sendToUser(userId, notificationData);
+    console.log('🔴 [DEBUG-TEMPLATE] sendToUser result:', JSON.stringify(result, null, 2));
+    console.log('🔴 [DEBUG-TEMPLATE] ===== sendTemplatedNotification END =====\n');
+    
+    return result;
   } catch (error) {
-    console.error("Send templated notification error:", error);
+    console.error("🔴 [DEBUG-TEMPLATE] Send templated notification error:", error);
+    console.error("🔴 [DEBUG-TEMPLATE] Error stack:", error.stack);
     return {
       success: false,
       error: error.message

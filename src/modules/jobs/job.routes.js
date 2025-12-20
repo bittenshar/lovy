@@ -16,6 +16,13 @@ const ensureViewJobs = (req, res, next) => {
 
 // Worker view - with proper cache control
 router.get('/worker', protect, (req, res, next) => {
+  // Allow both workers and employees to view worker jobs
+  if (req.user?.userType !== 'worker' && req.user?.userType !== 'employee') {
+    return res.status(403).json({
+      status: 'fail',
+      message: 'Only workers and employees can access this endpoint'
+    });
+  }
   // Disable caching for worker job list to ensure fresh data
   res.set('Cache-Control', 'no-store');
   controller.listJobsForWorker(req, res, next);

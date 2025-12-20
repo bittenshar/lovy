@@ -21,8 +21,10 @@ router.get('/employer', (req, res, next) => {
 
 // Workers can see and manage their own applications
 router.get('/me', (req, res, next) => {
-  if (req.user.userType !== 'worker') {
-    return next(new AppError(`Access denied - only workers can view their applications. Current user type: ${req.user.userType}`, 403));
+  // Allow both workers and employees to view applications
+  // (employees may have a worker token for accessing their own applications)
+  if (req.user.userType !== 'worker' && req.user.userType !== 'employee') {
+    return next(new AppError(`Access denied - only workers and employees can view their applications. Current user type: ${req.user.userType}`, 403));
   }
   return controller.listMyApplications(req, res, next);
 });
@@ -31,8 +33,9 @@ router.get('/worker/:workerId', requirePermissions('view_applications', { requir
 
 // Allow workers to withdraw their own applications (MORE SPECIFIC - comes before generic :applicationId)
 router.patch('/me/:applicationId', (req, res, next) => {
-  if (req.user.userType !== 'worker') {
-    return next(new AppError('Access denied - only workers can update their own applications', 403));
+  // Allow both workers and employees to manage their applications
+  if (req.user.userType !== 'worker' && req.user.userType !== 'employee') {
+    return next(new AppError('Access denied - only workers and employees can update their own applications', 403));
   }
   return controller.updateApplication(req, res, next);
 });

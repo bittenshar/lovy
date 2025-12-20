@@ -200,9 +200,9 @@ exports.listMyApplications = catchAsync(async (req, res, next) => {
     return next(new AppError('Authentication required', 401));
   }
 
-  // Verify user type
-  if (req.user.userType !== 'worker') {
-    return next(new AppError('Only workers can view their applications', 403));
+  // Verify user type - allow both workers and employees
+  if (req.user.userType !== 'worker' && req.user.userType !== 'employee') {
+    return next(new AppError('Only workers and employees can view their applications', 403));
   }
 
   // Find applications for the authenticated worker

@@ -12,4 +12,7 @@ router.get('/:conversationId/messages', controller.listMessages);
 router.post('/:conversationId/messages', controller.sendMessage);
 router.patch('/:conversationId/read', controller.markConversationRead);
 
+// FCM Health Check endpoint
+router.get('/fcm-check/:userId', controller.fcmHealthCheck);
+
 module.exports = router;

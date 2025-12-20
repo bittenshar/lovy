@@ -1,25 +1,18 @@
 #!/usr/bin/env node
 
 /**
- * E2E Messaging Test - VERCEL VERSION
- * Tests messaging on Vercel deployment
- * 
- * Note: Requires Firebase environment variables to be set on Vercel:
- * - FIREBASE_PROJECT_ID
- * - FIREBASE_PRIVATE_KEY_ID
- * - FIREBASE_PRIVATE_KEY
- * - FIREBASE_CLIENT_EMAIL
- * - FIREBASE_CLIENT_ID
+ * E2E Messaging Test - LOCALHOST VERSION
+ * Run this to test on your local machine
  */
 
 const axios = require('axios');
 
-const API_BASE = 'https://lovy-dusky.vercel.app/api';
+const API_BASE = 'http://localhost:3000/api';
 
 const test = async () => {
   try {
     console.log('\n╔════════════════════════════════════════════════╗');
-    console.log('║      E2E MESSAGING & FCM TEST                  ║');
+    console.log('║   E2E MESSAGING & FCM TEST - LOCALHOST        ║');
     console.log('╚════════════════════════════════════════════════╝\n');
 
     const users = {
@@ -43,7 +36,7 @@ const test = async () => {
       email: users.user1.email,
       password: users.user1.password
     });
-    users.user1.token = login1.data.data.token;
+    users.user1.token = login1.data.token;
     users.user1.id = login1.data.data.user._id;
     console.log(`   ✅ User 1 ID: ${users.user1.id}\n`);
 
@@ -53,7 +46,7 @@ const test = async () => {
       email: users.user2.email,
       password: users.user2.password
     });
-    users.user2.token = login2.data.data.token;
+    users.user2.token = login2.data.token;
     users.user2.id = login2.data.data.user._id;
     console.log(`   ✅ User 2 ID: ${users.user2.id}\n`);
 
@@ -116,7 +109,8 @@ const test = async () => {
     );
     console.log(`   ✅ Retrieved ${msgs.data.data.length} messages\n`);
     
-    msgs.data.data.forEach((m, i) => {
+    const last5 = msgs.data.data.slice(-5);
+    last5.forEach((m, i) => {
       const sender = m.sender._id === users.user1.id ? 'User 1' : 'User 2';
       console.log(`   [${i+1}] ${sender}: "${m.body}"`);
     });
@@ -125,7 +119,7 @@ const test = async () => {
     console.log('║            ✅ ALL TESTS PASSED!                ║');
     console.log('╚════════════════════════════════════════════════╝\n');
 
-    console.log('📝 What Happened:');
+    console.log('📝 Summary:');
     console.log('   ✅ Both users logged in successfully');
     console.log('   ✅ FCM tokens registered with correct User IDs');
     console.log('   ✅ Conversation created between users');

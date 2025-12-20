@@ -71,16 +71,16 @@ exports.createConversation = catchAsync(async (req, res, next) => {
 
   console.error('📝 [CONV] Creating new conversation with participants:', participants);
   
-  // Generate title from participants
-  let title = 'Conversation';
-  if (req.body.title) {
+  // Generate title array with worker and employee names
+  let title = [];
+  
+  if (req.body.title && Array.isArray(req.body.title)) {
     title = req.body.title;
   } else if (participants.length === 2) {
-    // For one-on-one: show BOTH names (e.g., "devesh & daksh")
+    // For one-on-one: get both participants' names and assign roles
     try {
       const User = require('../users/user.model');
       
-      // Get both participant names
       const participant1Id = participants[0];
       const participant2Id = participants[1];
       
@@ -90,15 +90,25 @@ exports.createConversation = catchAsync(async (req, res, next) => {
       const name1 = user1?.firstName || user1?.email || 'User';
       const name2 = user2?.firstName || user2?.email || 'User';
       
-      title = `${name1} & ${name2}`;
-      console.error('📝 [CONV] Generated title with both names:', title);
+      // Get roles from user data
+      const role1 = user1?.role || 'employee'; // default role
+      const role2 = user2?.role || 'employee';
+      
+      title = [
+        { role: role1, name: name1 },
+        { role: role2, name: name2 }
+      ];
+      
+      console.error('📝 [CONV] Generated title array:', JSON.stringify(title));
     } catch (err) {
       console.error('❌ [CONV] Error generating title:', err.message);
+      title = [
+        { role: 'employee', name: 'User1' },
+        { role: 'worker', name: 'User2' }
+      ];
     }
-  } else if (req.body.groupName) {
-    title = req.body.groupName;
   }
-  console.error('📝 [CONV] Conversation title:', title);
+  console.error('📝 [CONV] Conversation title array:', JSON.stringify(title));
   
   const conversation = await Conversation.create({
     participants,

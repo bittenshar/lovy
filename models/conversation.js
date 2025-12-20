@@ -9,10 +9,19 @@ const conversationSchema = new mongoose.Schema(
         required: true,
       },
     ],
-    title: {
-      type: String,
-      default: 'USER Conversation',
-    },
+    title: [
+      {
+        role: {
+          type: String,
+          enum: ['worker', 'employee'],
+          required: true,
+        },
+        name: {
+          type: String,
+          required: true,
+        },
+      },
+    ],
     lastMessage: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Message',

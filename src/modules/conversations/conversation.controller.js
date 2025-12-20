@@ -67,8 +67,31 @@ exports.createConversation = catchAsync(async (req, res, next) => {
   }
 
   console.error('📝 [CONV] Creating new conversation with participants:', participants);
+  
+  // Generate title from other participant if available
+  let title = 'Conversation';
+  if (req.body.title) {
+    title = req.body.title;
+  } else if (participants.length === 2) {
+    // For one-on-one: use other person's name if available
+    const otherParticipantId = participants.find(p => p !== req.user._id.toString());
+    if (otherParticipantId) {
+      try {
+        const otherUser = await require('../../auth/user.model').findById(otherParticipantId);
+        if (otherUser) {
+          title = otherUser.firstName || otherUser.email || 'Conversation';
+        }
+      } catch (err) {
+        console.error('❌ [CONV] Error fetching other user for title:', err.message);
+      }
+    }
+  } else if (req.body.groupName) {
+    title = req.body.groupName;
+  }
+  
   const conversation = await Conversation.create({
-    participants
+    participants,
+    title
   });
   console.error('📝 [CONV] Conversation created successfully:', conversation._id);
   

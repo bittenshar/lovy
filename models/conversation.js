@@ -9,6 +9,10 @@ const conversationSchema = new mongoose.Schema(
         required: true,
       },
     ],
+    title: {
+      type: String,
+      default: 'USER Conversation',
+    },
     lastMessage: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Message',

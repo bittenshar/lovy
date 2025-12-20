@@ -25,7 +25,7 @@ exports.sendToUser = async (userId, notificationData) => {
     
     // Skip if Firebase is not initialized
     if (!firebaseInitialized) {
-      console.warn(`🔴 [DEBUG-UTIL] ⚠️  Firebase not initialized. Notification for user ${userId} will be skipped.`);
+      console.error(`🔴 [DEBUG-UTIL] ⚠️  Firebase not initialized. Notification for user ${userId} will be skipped.`);
       return {
         success: false,
         sent: 0,

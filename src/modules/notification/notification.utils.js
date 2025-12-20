@@ -1,6 +1,10 @@
-const admin = require("./config/firebase");
+const firebaseConfig = require("./config/firebase");
 const UserFcmToken = require("./UserFcmToken.model");
 const templates = require("./constant/templetes");
+
+// Extract admin and initialization status
+const admin = firebaseConfig.admin;
+const firebaseInitialized = firebaseConfig.isInitialized;
 
 /**
  * Send notification to a specific user
@@ -14,6 +18,16 @@ const templates = require("./constant/templetes");
  */
 exports.sendToUser = async (userId, notificationData) => {
   try {
+    // Skip if Firebase is not initialized
+    if (!firebaseInitialized) {
+      console.warn(`Firebase not initialized. Notification for user ${userId} will be skipped.`);
+      return {
+        success: false,
+        sent: 0,
+        message: "Firebase not initialized"
+      };
+    }
+
     if (!userId) {
       throw new Error("UserId is required");
     }

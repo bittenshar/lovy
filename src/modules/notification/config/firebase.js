@@ -4,18 +4,19 @@ const fs = require("fs");
 
 // Load service account from root directory or environment variable
 let serviceAccount;
+let firebaseInitialized = false;
 const serviceAccountPath = path.join(__dirname, "../../../../firebase-service-account.json");
 
 try {
   // Try loading from root directory (local development)
   if (fs.existsSync(serviceAccountPath)) {
     serviceAccount = require(serviceAccountPath);
-  } else {
-    throw new Error("Service account file not found");
-  }
-} catch (error) {
-  // Fallback: construct from environment variables (for deployment)
-  if (process.env.FIREBASE_PROJECT_ID) {
+    admin.initializeApp({
+      credential: admin.credential.cert(serviceAccount),
+    });
+    firebaseInitialized = true;
+  } else if (process.env.FIREBASE_PROJECT_ID) {
+    // Fallback: construct from environment variables (for deployment)
     serviceAccount = {
       type: "service_account",
       project_id: process.env.FIREBASE_PROJECT_ID,
@@ -28,17 +29,22 @@ try {
       auth_provider_x509_cert_url: "https://www.googleapis.com/oauth2/v1/certs",
       client_x509_cert_url: process.env.FIREBASE_CLIENT_X509_CERT_URL || ""
     };
+    admin.initializeApp({
+      credential: admin.credential.cert(serviceAccount),
+    });
+    firebaseInitialized = true;
   } else {
-    console.error(`Firebase service account not found at ${serviceAccountPath} and no environment variables configured. Notifications will not work.`);
-    module.exports = null;
-    process.exit(1);
+    console.warn("⚠️  Firebase service account not configured. Push notifications will be disabled.");
+    firebaseInitialized = false;
   }
+} catch (error) {
+  console.warn(`⚠️  Firebase initialization failed: ${error.message}. Push notifications will be disabled.`);
+  firebaseInitialized = false;
 }
 
-admin.initializeApp({
-  credential: admin.credential.cert(serviceAccount),
-});
-
-module.exports = admin;
+module.exports = {
+  admin,
+  isInitialized: firebaseInitialized
+};
 
 

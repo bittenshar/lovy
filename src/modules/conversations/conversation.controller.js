@@ -68,24 +68,27 @@ exports.createConversation = catchAsync(async (req, res, next) => {
 
   console.error('📝 [CONV] Creating new conversation with participants:', participants);
   
-  // Generate title from other participant if available
+  // Generate title from participants
   let title = 'Conversation';
   if (req.body.title) {
     title = req.body.title;
   } else if (participants.length === 2) {
-    // For one-on-one: use other person's name if available
-    const otherParticipantId = participants.find(p => p !== req.user._id.toString());
-    if (otherParticipantId) {
-      try {
-        const User = require('../users/user.model');
+    // For one-on-one: use both names (current user & other user)
+    try {
+      const User = require('../users/user.model');
+      const currentUserName = req.user.firstName || req.user.email || 'You';
+      
+      const otherParticipantId = participants.find(p => p !== req.user._id.toString());
+      if (otherParticipantId) {
         const otherUser = await User.findById(otherParticipantId);
         if (otherUser) {
-          title = otherUser.firstName || otherUser.email || 'Conversation';
-          console.error('📝 [CONV] Generated title from other participant:', title);
+          const otherUserName = otherUser.firstName || otherUser.email;
+          title = `${currentUserName} & ${otherUserName}`;
+          console.error('📝 [CONV] Generated title with both participants:', title);
         }
-      } catch (err) {
-        console.error('❌ [CONV] Error fetching other user for title:', err.message);
       }
+    } catch (err) {
+      console.error('❌ [CONV] Error generating title:', err.message);
     }
   } else if (req.body.groupName) {
     title = req.body.groupName;

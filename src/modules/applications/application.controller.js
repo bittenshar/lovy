@@ -11,7 +11,7 @@ const {
 const { buildApplicationPresenter } = require('./application.presenter');
 const notificationUtils = require('../notification/notification.utils');
 
-const APPLICATION_FREE_QUOTA = 3;
+const APPLICATION_FREE_QUOTA = 2;
 const parsePositiveInt = (value, fallback) => {
   const parsed = parseInt(value, 10);
   if (Number.isFinite(parsed) && parsed > 0) {
@@ -23,7 +23,7 @@ const parsePositiveInt = (value, fallback) => {
 const parseBoolean = (value, fallback = false) => {
   if (typeof value === 'boolean') {
     return value;
-  }
+  }  
   if (typeof value === 'string') {
     const normalized = value.trim().toLowerCase();
     if (['true', '1', 'yes', 'on'].includes(normalized)) {

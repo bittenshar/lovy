@@ -335,8 +335,6 @@ exports.listAttendance = catchAsync(async (req, res, next) => {
   if (req.query.jobId) {
     filter.job = req.query.jobId;
   }
-    filter.job = req.query.jobId;
-  }
 
   if (req.query.date) {
     const range = buildDayRange(req.query.date);

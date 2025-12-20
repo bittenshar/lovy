@@ -4,14 +4,27 @@ const AppError = require('../../shared/utils/appError');
 const catchAsync = require('../../shared/utils/catchAsync');
 const notificationUtils = require('../notification/notification.utils');
 
-exports.listShifts = catchAsync(async (req, res) => {
+exports.listShifts = catchAsync(async (req, res, next) => {
   const filter = {};
-  if (req.query.workerId) {
-    filter.worker = req.query.workerId;
+  
+  // Workers can only see their own shifts
+  if (req.user.userType === 'worker') {
+    filter.worker = req.user._id;
   }
-  if (req.query.businessId) {
-    filter.business = req.query.businessId;
+  // Employers can filter by their workers or specific business
+  else if (req.user.userType === 'employer') {
+    if (req.query.workerId) {
+      filter.worker = req.query.workerId;
+    }
+    if (req.query.businessId) {
+      filter.business = req.query.businessId;
+    }
   }
+  // Others shouldn't have access
+  else {
+    return next(new AppError('You do not have permission to view shifts', 403));
+  }
+  
   const shifts = await Shift.find(filter).sort({ scheduledStart: 1 });
   res.status(200).json({ status: 'success', data: shifts });
 });

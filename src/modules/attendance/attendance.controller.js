@@ -304,8 +304,12 @@ const buildManagementSummary = (records) => {
 exports.listAttendance = catchAsync(async (req, res, next) => {
   const filter = {};
   
+  // Workers can only see their own attendance records
+  if (req.user.userType === 'worker') {
+    filter.worker = req.user._id;
+  }
   // Add business access control for employers
-  if (req.user.userType === 'employer') {
+  else if (req.user.userType === 'employer') {
     const accessibleBusinessIds = await getAccessibleBusinessIds(req.user);
     if (!accessibleBusinessIds.size) {
       return res.status(200).json({ status: 'success', results: 0, data: [] });
@@ -320,14 +324,17 @@ exports.listAttendance = catchAsync(async (req, res, next) => {
       filter.business = { $in: Array.from(accessibleBusinessIds) };
     }
   }
+  // Other user types shouldn't have access to attendance
+  else {
+    return next(new AppError('You do not have permission to view attendance records', 403));
+  }
 
-  if (req.query.workerId) {
+  if (req.query.workerId && req.user.userType !== 'worker') {
     filter.worker = req.query.workerId;
   }
-  if (req.query.businessId && !req.user.userType === 'employer') {
-    filter.business = req.query.businessId;
-  }
   if (req.query.jobId) {
+    filter.job = req.query.jobId;
+  }
     filter.job = req.query.jobId;
   }
 

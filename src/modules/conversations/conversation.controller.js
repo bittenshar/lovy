@@ -226,39 +226,48 @@ exports.sendMessage = catchAsync(async (req, res, next) => {
   console.error('📨 [MSG] Recipients count:', recipients.length);
   console.error('📨 [MSG] Recipient IDs:', recipients.map(r => r.toString()));
 
-  // Send notification to each recipient using dedicated conversation FCM utility
-  console.error('📱 [CONV-FCM] Starting FCM notifications for', recipients.length, 'recipient(s)');
-  for (const recipientId of recipients) {
+  // Send notification asynchronously - don't wait for it
+  console.error('📱 [CONV-FCM] ===== STARTING ASYNC FCM NOTIFICATIONS =====');
+  (async () => {
     try {
-      console.error('📱 [CONV-FCM] Notifying recipient:', recipientId.toString());
-      const senderDisplayName = message.sender?.firstName || message.sender?.email || 'Unknown';
-      const messagePreview = req.body.body.slice(0, 50);
-      const messageFull = req.body.body.slice(0, 150);
+      console.error('📱 [CONV-FCM] Inside async notification block, recipients:', recipients.length);
+      for (const recipientId of recipients) {
+        try {
+          console.error('📱 [CONV-FCM] Notifying recipient:', recipientId.toString());
+          const senderDisplayName = message.sender?.firstName || message.sender?.email || 'Unknown';
+          const messagePreview = req.body.body.slice(0, 50);
+          const messageFull = req.body.body.slice(0, 150);
 
-      console.error('📱 [CONV-FCM] Sender:', senderDisplayName, 'Preview:', messagePreview);
-      const fcmResult = await conversationFcmUtils.notifyNewMessage(
-        recipientId.toString(),
-        senderDisplayName,
-        messagePreview,
-        conversation._id.toString(),
-        message._id.toString(),
-        messageFull
-      );
-      
-      console.error('📱 [CONV-FCM] Result:', JSON.stringify(fcmResult));
-      if (fcmResult.success && fcmResult.sent > 0) {
-        console.error('✅ [CONV-FCM] FCM notification sent to:', recipientId);
-      } else {
-        console.error('⚠️  [CONV-FCM] FCM notification may have failed for:', recipientId);
-        console.error('⚠️  [CONV-FCM] Success:', fcmResult.success, 'Sent:', fcmResult.sent);
+          console.error('📱 [CONV-FCM] About to call notifyNewMessage');
+          const fcmResult = await conversationFcmUtils.notifyNewMessage(
+            recipientId.toString(),
+            senderDisplayName,
+            messagePreview,
+            conversation._id.toString(),
+            message._id.toString(),
+            messageFull
+          );
+          
+          console.error('📱 [CONV-FCM] notifyNewMessage returned:', JSON.stringify(fcmResult));
+          if (fcmResult.success && fcmResult.sent > 0) {
+            console.error('✅ [CONV-FCM] FCM notification sent to:', recipientId);
+          } else {
+            console.error('⚠️  [CONV-FCM] FCM notification may have failed');
+            console.error('⚠️  [CONV-FCM] Success:', fcmResult.success, 'Sent:', fcmResult.sent);
+          }
+          
+        } catch (notificationError) {
+          console.error('❌ [CONV-FCM] Exception for recipient:', recipientId.toString());
+          console.error('❌ [CONV-FCM] Error:', notificationError.message);
+        }
       }
-      
-    } catch (notificationError) {
-      console.error('❌ [CONV-FCM] Exception caught for:', recipientId.toString());
-      console.error('❌ [CONV-FCM] Error:', notificationError.message);
-      console.error('❌ [CONV-FCM] Stack:', notificationError.stack);
+      console.error('📱 [CONV-FCM] ===== ASYNC FCM NOTIFICATIONS COMPLETE =====');
+    } catch (outerError) {
+      console.error('❌ [CONV-FCM] Outer error in async block:', outerError.message);
     }
-  }
+  })().catch(err => {
+    console.error('❌ [CONV-FCM] Unhandled error in async IIFE:', err.message);
+  });
 
   console.error('📨 [MSG] ===== SEND MESSAGE END =====');
   console.error('═══════════════════════════════════════════════════════\n');

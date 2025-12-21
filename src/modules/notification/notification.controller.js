@@ -14,8 +14,11 @@ exports.registerToken = async (req, res) => {
   const userId = req.user._id.toString(); // Get user ID from authenticated request
 
   console.log('📍 [FCM] registerToken endpoint called');
+  console.log('📍 [FCM] Request body:', { token: token?.substring(0, 30) + '...', deviceType });
+  console.log('📍 [FCM] User ID from auth:', userId);
 
   if (!token) {
+    console.error('❌ [FCM] Token is missing from request body');
     return res.status(400).json({ 
       status: 'fail',
       message: "Token is required" 
@@ -23,6 +26,7 @@ exports.registerToken = async (req, res) => {
   }
 
   if (!userId) {
+    console.error('❌ [FCM] User ID is missing');
     return res.status(401).json({ 
       status: 'fail',
       message: "User authentication required" 
@@ -30,22 +34,18 @@ exports.registerToken = async (req, res) => {
   }
 
   try {
-    console.log('🔍 [FCM] registerToken called:', {
-      userId,
-      token: token.substring(0, 30) + '...',
-      deviceType: deviceType || 'web'
-    });
-
+    console.log('🔍 [FCM] Starting token registration...');
+    
     if (!UserFcmToken) {
       throw new Error('UserFcmToken model is not loaded');
     }
 
     // Check if token already exists for this user
     let fcmRecord = await UserFcmToken.findOne({ userId });
-    
-    console.log('🔍 [FCM] Found existing record:', fcmRecord ? 'YES' : 'NO');
+    console.log('🔍 [FCM] Database query completed. Found record:', !!fcmRecord);
     
     if (!fcmRecord) {
+      console.log('🔨 [FCM] Creating NEW record for userId:', userId);
       // Create new record if user doesn't have one yet
       fcmRecord = new UserFcmToken({
         userId,
@@ -55,15 +55,19 @@ exports.registerToken = async (req, res) => {
           isActive: true
         }]
       });
+      console.log('🔨 [FCM] New record created with tokens:', fcmRecord.tokens.length);
     } else {
+      console.log('📝 [FCM] Updating existing record. Current tokens:', fcmRecord.tokens.length);
       // Check if this token already exists
       const tokenIndex = fcmRecord.tokens.findIndex(t => t.token === token);
       
       if (tokenIndex >= 0) {
+        console.log('🔄 [FCM] Token already exists, updating it');
         // Update existing token
         fcmRecord.tokens[tokenIndex].deviceType = deviceType || 'web';
         fcmRecord.tokens[tokenIndex].isActive = true;
       } else {
+        console.log('➕ [FCM] Adding new token to array');
         // Add new token to array
         fcmRecord.tokens.push({
           token,
@@ -71,17 +75,16 @@ exports.registerToken = async (req, res) => {
           isActive: true
         });
       }
+      console.log('📝 [FCM] After update, tokens count:', fcmRecord.tokens.length);
     }
 
-    await fcmRecord.save();
-
-    console.log('✅ [FCM] Record saved successfully:', {
-      userId: userId,
-      token: token.substring(0, 30) + '...',
-      deviceType: deviceType || 'web',
-      totalTokens: fcmRecord.tokens.length,
-      recordId: fcmRecord._id
-    });
+    console.log('💾 [FCM] About to save record...');
+    const savedRecord = await fcmRecord.save();
+    console.log('✅ [FCM] Record saved successfully!');
+    console.log('✅ [FCM] Saved record ID:', savedRecord._id);
+    console.log('✅ [FCM] Saved record userId:', savedRecord.userId);
+    console.log('✅ [FCM] Saved record tokens count:', savedRecord.tokens.length);
+    console.log('✅ [FCM] Saved record tokens:', JSON.stringify(savedRecord.tokens, null, 2));
 
     res.status(200).json({ 
       status: 'success',
@@ -90,15 +93,14 @@ exports.registerToken = async (req, res) => {
         token: token.substring(0, 30) + '...',
         userId: userId,
         isActive: true,
-        totalTokens: fcmRecord.tokens.length
+        totalTokens: savedRecord.tokens.length
       }
     });
   } catch (error) {
-    console.error('❌ Error registering FCM token:', {
-      message: error.message,
-      name: error.name,
-      stack: error.stack
-    });
+    console.error('❌ Error registering FCM token:');
+    console.error('   Message:', error.message);
+    console.error('   Name:', error.name);
+    console.error('   Stack:', error.stack);
     res.status(500).json({ 
       status: 'error',
       message: "Failed to register FCM token",

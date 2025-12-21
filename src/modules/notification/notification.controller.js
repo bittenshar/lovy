@@ -1,5 +1,6 @@
 const admin = require("./config/firebase");
 const UserFcmToken = require("./UserFcmToken.model");
+const Notification = require("./notification.model");
 
 // Verify model is loaded
 if (!UserFcmToken) {
@@ -436,4 +437,161 @@ exports.hardDeleteToken = async (req, res) => {
   }
 
   res.json({ success: true, sent: responses.length });
+};
+
+/**
+ * GET /notifications - Fetch notifications for current user
+ */
+exports.getNotifications = async (req, res) => {
+  try {
+    const userId = req.user._id;
+    const { limit = 50, skip = 0, read } = req.query;
+
+    console.log('📬 [NOTIF] Fetching notifications for user:', userId);
+    console.log('📬 [NOTIF] Query params - limit:', limit, 'skip:', skip, 'read:', read);
+
+    // Build filter
+    const filter = { userId };
+    if (read !== undefined) {
+      filter.read = read === 'true';
+    }
+
+    // Get notifications
+    const notifications = await Notification.find(filter)
+      .sort({ createdAt: -1 })
+      .limit(parseInt(limit))
+      .skip(parseInt(skip))
+      .lean();
+
+    // Get total count
+    const total = await Notification.countDocuments(filter);
+
+    console.log(`✅ [NOTIF] Found ${notifications.length} notifications (total: ${total})`);
+
+    res.status(200).json({
+      status: 'success',
+      data: notifications,
+      pagination: {
+        total,
+        limit: parseInt(limit),
+        skip: parseInt(skip),
+        hasMore: parseInt(skip) + parseInt(limit) < total
+      }
+    });
+  } catch (error) {
+    console.error('❌ [NOTIF] Error fetching notifications:', error.message);
+    res.status(500).json({
+      status: 'fail',
+      message: 'Failed to fetch notifications',
+      error: error.message
+    });
+  }
+};
+
+/**
+ * PATCH /notifications/:notificationId/read - Mark notification as read
+ */
+exports.markNotificationAsRead = async (req, res) => {
+  try {
+    const { notificationId } = req.params;
+    const userId = req.user._id;
+
+    console.log('📖 [NOTIF] Marking notification as read:', notificationId);
+
+    const notification = await Notification.findOneAndUpdate(
+      { _id: notificationId, userId },
+      { read: true, readAt: new Date() },
+      { new: true }
+    );
+
+    if (!notification) {
+      console.error('❌ [NOTIF] Notification not found:', notificationId);
+      return res.status(404).json({
+        status: 'fail',
+        message: 'Notification not found'
+      });
+    }
+
+    console.log('✅ [NOTIF] Marked as read:', notificationId);
+
+    res.status(200).json({
+      status: 'success',
+      data: notification
+    });
+  } catch (error) {
+    console.error('❌ [NOTIF] Error marking notification as read:', error.message);
+    res.status(500).json({
+      status: 'fail',
+      message: 'Failed to mark notification as read',
+      error: error.message
+    });
+  }
+};
+
+/**
+ * PATCH /notifications/read-all - Mark all notifications as read
+ */
+exports.markAllNotificationsAsRead = async (req, res) => {
+  try {
+    const userId = req.user._id;
+
+    console.log('📖 [NOTIF] Marking all notifications as read for user:', userId);
+
+    const result = await Notification.updateMany(
+      { userId, read: false },
+      { read: true, readAt: new Date() }
+    );
+
+    console.log(`✅ [NOTIF] Updated ${result.modifiedCount} notifications`);
+
+    res.status(200).json({
+      status: 'success',
+      message: `Marked ${result.modifiedCount} notifications as read`
+    });
+  } catch (error) {
+    console.error('❌ [NOTIF] Error marking all notifications as read:', error.message);
+    res.status(500).json({
+      status: 'fail',
+      message: 'Failed to mark notifications as read',
+      error: error.message
+    });
+  }
+};
+
+/**
+ * DELETE /notifications/:notificationId - Delete a notification
+ */
+exports.deleteNotification = async (req, res) => {
+  try {
+    const { notificationId } = req.params;
+    const userId = req.user._id;
+
+    console.log('🗑️  [NOTIF] Deleting notification:', notificationId);
+
+    const result = await Notification.findOneAndDelete({
+      _id: notificationId,
+      userId
+    });
+
+    if (!result) {
+      return res.status(404).json({
+        status: 'fail',
+        message: 'Notification not found'
+      });
+    }
+
+    console.log('✅ [NOTIF] Deleted notification:', notificationId);
+
+    res.status(200).json({
+      status: 'success',
+      message: 'Notification deleted'
+    });
+  } catch (error) {
+    console.error('❌ [NOTIF] Error deleting notification:', error.message);
+    res.status(500).json({
+      status: 'fail',
+      message: 'Failed to delete notification',
+      error: error.message
+    });
+  }
 };

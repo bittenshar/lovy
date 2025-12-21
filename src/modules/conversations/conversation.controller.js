@@ -4,6 +4,7 @@ const catchAsync = require('../../shared/utils/catchAsync');
 const AppError = require('../../shared/utils/appError');
 const notificationUtils = require('../notification/notification.utils');
 const conversationFcmUtils = require('./fcm.conversation.utils');
+const Notification = require('../notification/notification.model');
 
 exports.listConversations = catchAsync(async (req, res) => {
   console.error('📥 [CONV] Listing conversations for user:', req.user._id);
@@ -269,6 +270,31 @@ exports.sendMessage = catchAsync(async (req, res, next) => {
   const recipients = conversation.participants.filter(p => p.toString() !== req.user._id.toString());
   console.error('📨 [MSG] Recipients count:', recipients.length);
   console.error('📨 [MSG] Recipient IDs:', recipients.map(r => r.toString()));
+
+  // Create notification records for each recipient
+  const senderDisplayName = message.sender?.firstName || message.sender?.email || 'Unknown';
+  const messagePreview = req.body.body.slice(0, 50);
+  
+  for (const recipientId of recipients) {
+    try {
+      await Notification.create({
+        userId: recipientId,
+        title: senderDisplayName,
+        body: messagePreview,
+        type: 'message',
+        data: {
+          conversationId: conversation._id.toString(),
+          messageId: message._id.toString(),
+          senderId: req.user._id.toString()
+        },
+        relatedId: conversation._id.toString(),
+        read: false
+      });
+      console.error('✅ [NOTIF] Created notification for recipient:', recipientId);
+    } catch (notifErr) {
+      console.error('⚠️  [NOTIF] Failed to create notification:', notifErr.message);
+    }
+  }
 
   // Send notification asynchronously - don't wait for it
   console.error('📱 [CONV-FCM] ===== STARTING ASYNC FCM NOTIFICATIONS =====');

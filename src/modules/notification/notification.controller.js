@@ -10,131 +10,89 @@ if (!UserFcmToken) {
  * Register FCM Token
  */
 exports.registerToken = async (req, res) => {
+  const startTime = Date.now();
   console.log('\n========== FCM TOKEN REGISTRATION REQUEST ==========');
-  console.log('📍 [FCM] Endpoint called at:', new Date().toISOString());
-  console.log('📍 [FCM] Request method:', req.method);
-  console.log('📍 [FCM] Request path:', req.path);
-  console.log('📍 [FCM] Request URL:', req.originalUrl);
-  console.log('📍 [FCM] Request headers:', JSON.stringify(req.headers, null, 2));
-  console.log('📍 [FCM] Request body:', JSON.stringify(req.body, null, 2));
-  console.log('📍 [FCM] Request user:', req.user ? { _id: req.user._id, email: req.user.email } : 'NO AUTH');
+  console.log('⏰ [FCM] Time:', new Date().toISOString());
   
   const { token, deviceType } = req.body;
-  const userId = req.user?._id?.toString(); // Get user ID from authenticated request
+  const userId = req.user?._id?.toString();
 
-  console.log('📍 [FCM] Extracted values:');
+  console.log('📍 [FCM] Input:');
   console.log('   - token:', token ? `${token.substring(0, 30)}...` : 'MISSING');
-  console.log('   - deviceType:', deviceType || 'web (default)');
   console.log('   - userId:', userId || 'MISSING');
+  console.log('   - deviceType:', deviceType || 'web');
 
-  if (!token) {
-    console.error('❌ [FCM] FAIL: Token is missing from request body');
+  if (!token || !userId) {
+    console.error('❌ [FCM] Missing required fields');
     return res.status(400).json({ 
       status: 'fail',
-      message: "Token is required" 
-    });
-  }
-
-  if (!userId) {
-    console.error('❌ [FCM] FAIL: User ID is missing - authentication required');
-    return res.status(401).json({ 
-      status: 'fail',
-      message: "User authentication required" 
+      message: token ? "User authentication required" : "Token is required"
     });
   }
 
   try {
-    console.log('🔍 [FCM] Starting token registration process...');
+    console.log('🔍 [FCM] Querying database...');
+    const queryStart = Date.now();
     
-    if (!UserFcmToken) {
-      throw new Error('UserFcmToken model is not loaded');
-    }
-
-    // Check if token already exists for this user
-    let fcmRecord = await UserFcmToken.findOne({ userId });
-    console.log('🔍 [FCM] Database query result:', fcmRecord ? 'RECORD FOUND' : 'NO RECORD FOUND');
+    const fcmRecord = await UserFcmToken.findOne({ userId }).maxTimeMS(5000);
+    
+    const queryTime = Date.now() - queryStart;
+    console.log(`✅ [FCM] Query completed in ${queryTime}ms - Record: ${fcmRecord ? 'FOUND' : 'NOT FOUND'}`);
     
     if (!fcmRecord) {
-      console.log('🔨 [FCM] Creating NEW record for userId:', userId);
-      // Create new record if user doesn't have one yet
-      fcmRecord = new UserFcmToken({
+      console.log('🔨 [FCM] Creating new record...');
+      const newRecord = new UserFcmToken({
         userId,
-        tokens: [{
-          token,
-          deviceType: deviceType || 'web',
-          isActive: true
-        }]
+        tokens: [{ token, deviceType: deviceType || 'web', isActive: true }]
       });
-      console.log('🔨 [FCM] New record created in memory');
-      console.log('   - Record _id:', fcmRecord._id);
-      console.log('   - Record userId:', fcmRecord.userId);
-      console.log('   - Tokens array length:', fcmRecord.tokens.length);
-      console.log('   - First token:', JSON.stringify(fcmRecord.tokens[0], null, 2));
-    } else {
-      console.log('📝 [FCM] Updating existing record');
-      console.log('   - Current tokens count:', fcmRecord.tokens.length);
-      // Check if this token already exists
-      const tokenIndex = fcmRecord.tokens.findIndex(t => t.token === token);
       
-      if (tokenIndex >= 0) {
-        console.log('🔄 [FCM] Token already exists at index', tokenIndex, '- updating...');
-        // Update existing token
-        fcmRecord.tokens[tokenIndex].deviceType = deviceType || 'web';
-        fcmRecord.tokens[tokenIndex].isActive = true;
-      } else {
-        console.log('➕ [FCM] New token - adding to array...');
-        // Add new token to array
-        fcmRecord.tokens.push({
-          token,
-          deviceType: deviceType || 'web',
-          isActive: true
-        });
-        console.log('➕ [FCM] Token pushed. New count:', fcmRecord.tokens.length);
+      const saveStart = Date.now();
+      await newRecord.save();
+      const saveTime = Date.now() - saveStart;
+      
+      console.log(`✅ [FCM] Saved in ${saveTime}ms - Tokens: ${newRecord.tokens.length}`);
+      
+      return res.status(200).json({
+        status: 'success',
+        message: "FCM token registered",
+        data: { 
+          token: token.substring(0, 30) + '...',
+          totalTokens: newRecord.tokens.length
+        }
+      });
+    } else {
+      console.log(`📝 [FCM] Updating existing record - Current tokens: ${fcmRecord.tokens.length}`);
+      
+      const tokenExists = fcmRecord.tokens.findIndex(t => t.token === token) >= 0;
+      if (!tokenExists) {
+        fcmRecord.tokens.push({ token, deviceType: deviceType || 'web', isActive: true });
       }
+      
+      const saveStart = Date.now();
+      await fcmRecord.save();
+      const saveTime = Date.now() - saveStart;
+      
+      console.log(`✅ [FCM] Updated in ${saveTime}ms - Tokens: ${fcmRecord.tokens.length}`);
+      
+      return res.status(200).json({
+        status: 'success',
+        message: "FCM token registered",
+        data: { 
+          token: token.substring(0, 30) + '...',
+          totalTokens: fcmRecord.tokens.length
+        }
+      });
     }
-
-    console.log('💾 [FCM] About to save record to MongoDB...');
-    console.log('   - Record before save:', {
-      _id: fcmRecord._id,
-      userId: fcmRecord.userId,
-      tokensCount: fcmRecord.tokens.length,
-      tokens: fcmRecord.tokens.map(t => ({ token: t.token.substring(0, 20) + '...', deviceType: t.deviceType, isActive: t.isActive }))
-    });
-    
-    const savedRecord = await fcmRecord.save();
-    
-    console.log('✅ [FCM] Record saved successfully!');
-    console.log('   - Saved record _id:', savedRecord._id);
-    console.log('   - Saved record userId:', savedRecord.userId);
-    console.log('   - Saved tokens count:', savedRecord.tokens.length);
-    console.log('   - Full tokens array:', JSON.stringify(savedRecord.tokens.map(t => ({ token: t.token.substring(0, 20) + '...', deviceType: t.deviceType, isActive: t.isActive })), null, 2));
-
-    res.status(200).json({ 
-      status: 'success',
-      message: "FCM token registered successfully",
-      data: {
-        token: token.substring(0, 30) + '...',
-        userId: userId,
-        isActive: true,
-        totalTokens: savedRecord.tokens.length,
-        timestamp: new Date().toISOString()
-      }
-    });
-    console.log('✅ [FCM] Response sent successfully\n');
   } catch (error) {
-    console.error('\n❌ ERROR REGISTERING FCM TOKEN:');
-    console.error('   - Error message:', error.message);
-    console.error('   - Error name:', error.name);
-    console.error('   - Error code:', error.code);
-    console.error('   - Stack trace:', error.stack);
-    console.log('========== END ERROR ==========\n');
+    const totalTime = Date.now() - startTime;
+    console.error(`\n❌ [FCM] ERROR after ${totalTime}ms:`);
+    console.error('   - Message:', error.message);
+    console.error('   - Name:', error.name);
     
     res.status(500).json({ 
       status: 'error',
       message: "Failed to register FCM token",
-      error: error.message,
-      details: error.name,
-      timestamp: new Date().toISOString()
+      error: error.message
     });
   }
 };

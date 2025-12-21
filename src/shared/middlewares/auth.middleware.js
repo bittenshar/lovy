@@ -63,9 +63,11 @@ exports.protect = catchAsync(async (req, res, next) => {
       return next(new AppError('Password was recently changed. Please log in again.', 401));
     }
 
-    // Update last activity
-    currentUser.lastActiveAt = new Date();
-    await currentUser.save({ validateBeforeSave: false });
+    // PERFORMANCE FIX: Don't update lastActiveAt on every request
+    // This was causing database saves on every auth check, leading to timeouts on Vercel
+    // Instead, update lastActiveAt less frequently (only on login/signup)
+    // currentUser.lastActiveAt = new Date();
+    // await currentUser.save({ validateBeforeSave: false });
 
     if (!currentUser.userType) {
       console.warn('⚠️ User loaded without userType:', {

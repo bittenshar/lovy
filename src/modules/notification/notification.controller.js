@@ -1,12 +1,19 @@
 const admin = require("./config/firebase");
 const UserFcmToken = require("./UserFcmToken.model");
 
+// Verify model is loaded
+if (!UserFcmToken) {
+  console.error('❌ CRITICAL: UserFcmToken model not loaded!');
+}
+
 /**
  * Register FCM Token
  */
 exports.registerToken = async (req, res) => {
   const { token, deviceType } = req.body;
-  const userId = req.user._id; // Get user ID from authenticated request
+  const userId = req.user._id.toString(); // Get user ID from authenticated request
+
+  console.log('📍 [FCM] registerToken endpoint called');
 
   if (!token) {
     return res.status(400).json({ 
@@ -23,38 +30,80 @@ exports.registerToken = async (req, res) => {
   }
 
   try {
-    const updatedToken = await UserFcmToken.findOneAndUpdate(
-      { token },
-      {
-        token,
-        userId,
-        deviceType: deviceType || 'mobile',
-        isActive: true,
-        updatedAt: new Date(),
-      },
-      { upsert: true, new: true }
-    );
-
-    console.log('✅ FCM Token registered:', {
-      userId: userId.toString(),
+    console.log('🔍 [FCM] registerToken called:', {
+      userId,
       token: token.substring(0, 30) + '...',
-      deviceType: deviceType || 'mobile'
+      deviceType: deviceType || 'web'
+    });
+
+    if (!UserFcmToken) {
+      throw new Error('UserFcmToken model is not loaded');
+    }
+
+    // Check if token already exists for this user
+    let fcmRecord = await UserFcmToken.findOne({ userId });
+    
+    console.log('🔍 [FCM] Found existing record:', fcmRecord ? 'YES' : 'NO');
+    
+    if (!fcmRecord) {
+      // Create new record if user doesn't have one yet
+      fcmRecord = new UserFcmToken({
+        userId,
+        tokens: [{
+          token,
+          deviceType: deviceType || 'web',
+          isActive: true
+        }]
+      });
+    } else {
+      // Check if this token already exists
+      const tokenIndex = fcmRecord.tokens.findIndex(t => t.token === token);
+      
+      if (tokenIndex >= 0) {
+        // Update existing token
+        fcmRecord.tokens[tokenIndex].deviceType = deviceType || 'web';
+        fcmRecord.tokens[tokenIndex].isActive = true;
+      } else {
+        // Add new token to array
+        fcmRecord.tokens.push({
+          token,
+          deviceType: deviceType || 'web',
+          isActive: true
+        });
+      }
+    }
+
+    await fcmRecord.save();
+
+    console.log('✅ [FCM] Record saved successfully:', {
+      userId: userId,
+      token: token.substring(0, 30) + '...',
+      deviceType: deviceType || 'web',
+      totalTokens: fcmRecord.tokens.length,
+      recordId: fcmRecord._id
     });
 
     res.status(200).json({ 
       status: 'success',
       message: "FCM token registered successfully",
       data: {
-        token: updatedToken.token.substring(0, 30) + '...',
-        userId: updatedToken.userId,
-        isActive: updatedToken.isActive
+        token: token.substring(0, 30) + '...',
+        userId: userId,
+        isActive: true,
+        totalTokens: fcmRecord.tokens.length
       }
     });
   } catch (error) {
-    console.error('❌ Error registering FCM token:', error);
+    console.error('❌ Error registering FCM token:', {
+      message: error.message,
+      name: error.name,
+      stack: error.stack
+    });
     res.status(500).json({ 
       status: 'error',
-      message: "Failed to register FCM token" 
+      message: "Failed to register FCM token",
+      error: error.message,
+      details: error.name
     });
   }
 };

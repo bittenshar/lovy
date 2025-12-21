@@ -142,8 +142,12 @@ exports.sendToUser = async (userId, notificationData) => {
     }
 
     console.error('🔴 [DEBUG-UTIL] Querying FCM tokens for user:', userId);
-    const tokens = await UserFcmToken.find({ userId });
-    console.error('🔴 [DEBUG-UTIL] Found', tokens.length, 'FCM tokens');
+    const userFcmData = await UserFcmToken.findOne({ userId });
+    console.error('🔴 [DEBUG-UTIL] User FCM Data Found:', !!userFcmData);
+    
+    // Extract active tokens from the tokens array
+    const tokens = userFcmData && userFcmData.tokens ? userFcmData.tokens.filter(t => t.isActive) : [];
+    console.error('🔴 [DEBUG-UTIL] Found', tokens.length, 'active FCM tokens');
     
     if (tokens.length > 0) {
       console.error('🔴 [DEBUG-UTIL] Token Details:');
@@ -375,9 +379,21 @@ exports.sendBroadcast = async (notificationData) => {
       throw new Error("Title and body are required");
     }
 
-    const tokens = await UserFcmToken.find().select("token deviceType");
-
-    if (!tokens.length) {
+    const allUserFcmData = await UserFcmToken.find();
+    
+    // Collect all active tokens from all users
+    const allTokens = [];
+    allUserFcmData.forEach(userFcmData => {
+      if (userFcmData.tokens && Array.isArray(userFcmData.tokens)) {
+        userFcmData.tokens.forEach(t => {
+          if (t.isActive) {
+            allTokens.push(t);
+          }
+        });
+      }
+    });
+    
+    if (!allTokens.length) {
       return {
         success: false,
         sent: 0,
@@ -388,7 +404,7 @@ exports.sendBroadcast = async (notificationData) => {
     const responses = [];
     const errors = [];
 
-    for (const t of tokens) {
+    for (const t of allTokens) {
       try {
         const notification = {
           title: notificationData.title,
@@ -425,7 +441,7 @@ exports.sendBroadcast = async (notificationData) => {
       success: true,
       sent: responses.length,
       failed: errors.length,
-      totalTokens: tokens.length
+      totalTokens: allTokens.length
     };
   } catch (error) {
     console.error("Send broadcast error:", error);

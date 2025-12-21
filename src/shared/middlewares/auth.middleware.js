@@ -52,7 +52,7 @@ exports.protect = catchAsync(async (req, res, next) => {
     }
 
     const currentUser = await User.findById(decoded.id)
-      .select('+passwordChangedAt')
+      .select('+passwordChangedAt +userType')
       .exec();
 
     if (!currentUser) {
@@ -66,6 +66,14 @@ exports.protect = catchAsync(async (req, res, next) => {
     // Update last activity
     currentUser.lastActiveAt = new Date();
     await currentUser.save({ validateBeforeSave: false });
+
+    if (!currentUser.userType) {
+      console.warn('⚠️ User loaded without userType:', {
+        userId: currentUser._id,
+        email: currentUser.email,
+        userObjKeys: Object.keys(currentUser || {}).slice(0, 15)
+      });
+    }
 
     req.user = currentUser;
     next();

@@ -18,9 +18,14 @@ const ensureViewJobs = (req, res, next) => {
 router.get('/worker', protect, (req, res, next) => {
   // Allow both workers and employees to view worker jobs
   if (req.user?.userType !== 'worker' && req.user?.userType !== 'employee') {
+    console.log('❌ Access denied to /jobs/worker:');
+    console.log('   User ID:', req.user?._id);
+    console.log('   User type:', req.user?.userType);
+    console.log('   User type is undefined:', req.user?.userType === undefined);
+    console.log('   Full user object keys:', Object.keys(req.user || {}).slice(0, 10));
     return res.status(403).json({
       status: 'fail',
-      message: 'Only workers and employees can access this endpoint'
+      message: `Only workers and employees can access this endpoint. Current userType: ${req.user?.userType || 'MISSING'}`
     });
   }
   // Disable caching for worker job list to ensure fresh data

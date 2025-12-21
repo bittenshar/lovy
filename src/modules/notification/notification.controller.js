@@ -5,29 +5,58 @@ const UserFcmToken = require("./UserFcmToken.model");
  * Register FCM Token
  */
 exports.registerToken = async (req, res) => {
-  const { token, userId, deviceId, deviceType } = req.body;
+  const { token, deviceType } = req.body;
+  const userId = req.user._id; // Get user ID from authenticated request
 
   if (!token) {
-    return res.status(400).json({ message: "Token is required" });
+    return res.status(400).json({ 
+      status: 'fail',
+      message: "Token is required" 
+    });
   }
 
   if (!userId) {
-    return res.status(400).json({ message: "UserId is required" });
+    return res.status(401).json({ 
+      status: 'fail',
+      message: "User authentication required" 
+    });
   }
 
-  await UserFcmToken.findOneAndUpdate(
-    { token },
-    {
-      token,
-      deviceId,
-      deviceType,
-      userId,
-      isActive: true,
-    },
-    { upsert: true, new: true }
-  );
+  try {
+    const updatedToken = await UserFcmToken.findOneAndUpdate(
+      { token },
+      {
+        token,
+        userId,
+        deviceType: deviceType || 'mobile',
+        isActive: true,
+        updatedAt: new Date(),
+      },
+      { upsert: true, new: true }
+    );
 
-  res.json({ success: true, message: "FCM token registered" });
+    console.log('✅ FCM Token registered:', {
+      userId: userId.toString(),
+      token: token.substring(0, 30) + '...',
+      deviceType: deviceType || 'mobile'
+    });
+
+    res.status(200).json({ 
+      status: 'success',
+      message: "FCM token registered successfully",
+      data: {
+        token: updatedToken.token.substring(0, 30) + '...',
+        userId: updatedToken.userId,
+        isActive: updatedToken.isActive
+      }
+    });
+  } catch (error) {
+    console.error('❌ Error registering FCM token:', error);
+    res.status(500).json({ 
+      status: 'error',
+      message: "Failed to register FCM token" 
+    });
+  }
 };
 
 

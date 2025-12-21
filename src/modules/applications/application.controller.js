@@ -173,7 +173,7 @@ exports.getWorkerApplications = catchAsync(async (req, res, next) => {
         select: 'name description logo logoSmall logoMedium logoUrl location'
       }
     })
-    .populate('worker', 'firstName lastName email phone userType')
+    .populate('worker', '_id firstName lastName email phone userType')
     .sort({ createdAt: -1 });
 
   if (!applications.length) {
@@ -216,7 +216,7 @@ exports.listMyApplications = catchAsync(async (req, res, next) => {
     })
     .populate({
       path: 'worker',
-      select: 'firstName lastName email phone userType'
+      select: '_id firstName lastName email phone userType'
     })
     .sort({ createdAt: -1 });
 
@@ -477,7 +477,7 @@ exports.listApplications = catchAsync(async (req, res, next) => {
   if (includeApplicantDetails) {
     applicationQuery.populate({
       path: 'worker',
-      select: 'firstName lastName email phone userType'
+      select: '_id firstName lastName email phone userType'
     });
   }
 

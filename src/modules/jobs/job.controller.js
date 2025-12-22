@@ -233,13 +233,12 @@ exports.listJobsForWorker = catchAsync(async (req, res) => {
   }
 
   console.log(`✅ [JOBS-WORKER] Found ${jobs.length} total jobs, returning ${out.length} after filters`);
-    out.sort((a, b) => {
-      if (a.distance == null && b.distance == null) return 0;
-      if (a.distance == null) return 1;
-      if (b.distance == null) return -1;
-      return a.distance - b.distance;
-    });
-  }
+  out.sort((a, b) => {
+    if (a.distance == null && b.distance == null) return 0;
+    if (a.distance == null) return 1;
+    if (b.distance == null) return -1;
+    return a.distance - b.distance;
+  });
 
   res.status(200).json({ status: 'success', results: out.length, data: out });
 });

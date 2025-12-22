@@ -42,8 +42,19 @@ exports.createConversation = catchAsync(async (req, res, next) => {
   console.error('📝 [CONV] Creating conversation for user:', req.user._id);
   console.error('📝 [CONV] Request body:', JSON.stringify(req.body, null, 2));
   
-  const participants = Array.from(new Set([...req.body.participants, req.user._id.toString()]));
-  console.error('📝 [CONV] Participants after dedup:', participants);
+  // Validate and filter participants - remove empty strings and null values
+  const rawParticipants = req.body.participants || [];
+  const validatedParticipants = rawParticipants.filter(p => p && typeof p === 'string' && p.trim().length > 0);
+  
+  // Add current user and deduplicate
+  const participants = Array.from(new Set([...validatedParticipants, req.user._id.toString()]));
+  console.error('📝 [CONV] Participants after validation and dedup:', participants);
+  
+  // Check if any participant is empty
+  if (participants.some(p => !p || p.trim().length === 0)) {
+    console.error('❌ [CONV] Invalid participant detected (empty string)');
+    return next(new AppError('All participants must have valid IDs', 400));
+  }
   
   if (participants.length < 2) {
     console.error('❌ [CONV] Invalid participant count:', participants.length);

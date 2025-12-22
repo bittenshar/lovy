@@ -9,26 +9,20 @@ const conversationSchema = new mongoose.Schema(
         required: true,
       },
     ],
-    title: [
-      {
-        role: {
-          type: String,
-          enum: ['worker', 'employee'],
-          required: true,
-        },
-        name: {
-          type: String,
-          required: true,
-        },
-      },
-    ],
+    title: {
+      type: String,
+      required: true,
+    },
+
     lastMessage: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Message',
     },
+
     lastMessageText: String,
     lastMessageSenderId: mongoose.Schema.Types.ObjectId,
     lastMessageTime: Date,
+    
     unreadCount: {
       type: Map,
       of: Number,

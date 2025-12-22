@@ -11,7 +11,7 @@ require('dotenv').config();
 const mongoose = require('mongoose');
 const UserFcmToken = require('./src/modules/notification/UserFcmToken.model');
 const User = require('./src/modules/users/user.model');
-const Conversation = require('./models/conversation');
+const Conversation = require('./src/modules/conversations/conversation');
 const Message = require('./src/modules/conversations/message.model');
 const Notification = require('./src/modules/notification/notification.model');
 const notificationUtils = require('./src/modules/notification/notification.utils');

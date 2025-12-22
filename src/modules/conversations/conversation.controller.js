@@ -1,4 +1,4 @@
-const Conversation = require('../../../models/conversation');
+const Conversation = require('./conversation');
 const Message = require('./message.model');
 const catchAsync = require('../../shared/utils/catchAsync');
 const AppError = require('../../shared/utils/appError');
@@ -72,11 +72,21 @@ exports.createConversation = catchAsync(async (req, res, next) => {
 
   console.error('📝 [CONV] Creating new conversation with participants:', participants);
   
-  // Generate title array with worker and employee names
-  let title = [];
+  let title = '';
   
-  if (req.body.title && Array.isArray(req.body.title)) {
+  if (req.body.title && typeof req.body.title === 'string') {
     title = req.body.title;
+  } else if (req.body.jobId) {
+    // For job-related conversations: use job title
+    try {
+      const Job = require('../jobs/job.model');
+      const job = await Job.findById(req.body.jobId);
+      title = job?.title || `Job ID: ${req.body.jobId}`;
+      console.error('📝 [CONV] Generated title from job:', title);
+    } catch (err) {
+      console.error('❌ [CONV] Error generating title from job:', err.message);
+      title = `Job ID: ${req.body.jobId}`;
+    }
   } else if (participants.length === 2) {
     // For one-on-one: get both participants' names and assign roles
     try {
@@ -91,8 +101,7 @@ exports.createConversation = catchAsync(async (req, res, next) => {
       const name1 = user1?.firstName || user1?.email || 'User';
       const name2 = user2?.firstName || user2?.email || 'User';
       
-      // Get roles from user data
-      const role1 = user1?.role || 'employee'; // default role
+      const role1 = user1?.role || 'employee';
       const role2 = user2?.role || 'employee';
       
       title = [

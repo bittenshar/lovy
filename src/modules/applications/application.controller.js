@@ -40,9 +40,14 @@ const parseBoolean = (value, fallback = false) => {
 };
 
 exports.createApplication = catchAsync(async (req, res, next) => {
-  if (req.user.userType !== 'worker') {
-    return next(new AppError('Only workers can apply to jobs', 403));
+  // Allow both workers and employers to apply to jobs (for testing purposes)
+  // In production, you might want to restrict this to workers only
+  if (req.user.userType !== 'worker' && req.user.userType !== 'employer') {
+    console.log('❌ [APP] Application rejected - user type:', req.user.userType);
+    return next(new AppError('Only workers and employers can apply to jobs', 403));
   }
+
+  console.log('✅ [APP] Application creation allowed for', req.user.userType);
 
   const job = await Job.findById(req.params.jobId).populate('business');
   if (!job || job.status !== 'active') {

@@ -16,18 +16,25 @@ const ensureViewJobs = (req, res, next) => {
 
 // Worker view - with proper cache control
 router.get('/worker', protect, (req, res, next) => {
-  // Allow both workers and employees to view worker jobs
-  if (req.user?.userType !== 'worker' && req.user?.userType !== 'employee') {
-    console.log('❌ Access denied to /jobs/worker:');
+  // Ensure user has a userType (for backwards compatibility with old accounts)
+  if (!req.user?.userType) {
+    console.log('⚠️  [JOBS-WORKER] User missing userType, defaulting to "worker"');
     console.log('   User ID:', req.user?._id);
-    console.log('   User type:', req.user?.userType);
-    console.log('   User type is undefined:', req.user?.userType === undefined);
-    console.log('   Full user object keys:', Object.keys(req.user || {}).slice(0, 10));
+    console.log('   User email:', req.user?.email);
+    // Default to worker for backwards compatibility
+    req.user.userType = 'worker';
+  }
+  
+  // Allow workers and employers to view worker jobs
+  if (req.user.userType !== 'worker' && req.user.userType !== 'employer') {
+    console.log('❌ [JOBS-WORKER] Access denied - invalid user type:', req.user.userType);
     return res.status(403).json({
       status: 'fail',
-      message: `Only workers and employees can access this endpoint. Current userType: ${req.user?.userType || 'MISSING'}`
+      message: `Access denied. Your userType: ${req.user.userType}`
     });
   }
+  
+  console.log('✅ [JOBS-WORKER] Access granted to user (${req.user.userType})');
   // Disable caching for worker job list to ensure fresh data
   res.set('Cache-Control', 'no-store');
   controller.listJobsForWorker(req, res, next);

@@ -11,7 +11,7 @@ require('dotenv').config();
 const mongoose = require('mongoose');
 const UserFcmToken = require('./src/modules/notification/UserFcmToken.model');
 const User = require('./src/modules/users/user.model');
-const Conversation = require('./src/modules/conversations/conversation.model');
+const Conversation = require('./models/conversation');
 const Message = require('./src/modules/conversations/message.model');
 const Notification = require('./src/modules/notification/notification.model');
 const notificationUtils = require('./src/modules/notification/notification.utils');
@@ -77,9 +77,10 @@ async function testMessageFcmFlow() {
     } else {
       await log('SUCCESS', `Found FCM record for receiver`);
       await log('INFO', `Active tokens: ${receiverFcmData.tokens.filter(t => t.isActive).length}`);
-      receiverFcmData.tokens.forEach((token, idx) => {
+      for (let idx = 0; idx < receiverFcmData.tokens.length; idx++) {
+        const token = receiverFcmData.tokens[idx];
         await log('DEBUG', `Token ${idx + 1}: ${token.token.substring(0, 30)}... [${token.deviceType}] ${token.isActive ? '✓' : '✗'}`);
-      });
+      }
     }
 
     // Step 3: Check or create conversation

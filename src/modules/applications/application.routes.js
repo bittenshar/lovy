@@ -21,11 +21,15 @@ router.get('/employer', (req, res, next) => {
 
 // Workers can see and manage their own applications
 router.get('/me', (req, res, next) => {
-  // Allow both workers and employees to view applications
-  // (employees may have a worker token for accessing their own applications)
-  if (req.user.userType !== 'worker' && req.user.userType !== 'employee') {
-    return next(new AppError(`Access denied - only workers and employees can view their applications. Current user type: ${req.user.userType}`, 403));
+  // Allow workers, employees, and employers to view applications
+  // - Workers/employees: view their own job applications
+  // - Employers: this endpoint will show their applications by permission middleware
+  if (req.user.userType !== 'worker' && req.user.userType !== 'employee' && req.user.userType !== 'employer') {
+    console.log('❌ [APP-ROUTE] Access denied to /applications/me');
+    console.log('   User type:', req.user.userType);
+    return next(new AppError(`Access denied - invalid user type: ${req.user.userType}. Only workers, employees, and employers can view applications`, 403));
   }
+  console.log('✅ [APP-ROUTE] Access granted to /applications/me for', req.user.userType);
   return controller.listMyApplications(req, res, next);
 });
 

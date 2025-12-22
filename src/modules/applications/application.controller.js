@@ -200,13 +200,27 @@ exports.listMyApplications = catchAsync(async (req, res, next) => {
     return next(new AppError('Authentication required', 401));
   }
 
-  // Verify user type - allow both workers and employees
-  if (req.user.userType !== 'worker' && req.user.userType !== 'employee') {
-    return next(new AppError('Only workers and employees can view their applications', 403));
+  console.log('📋 [APP-CONTROLLER] listMyApplications called for user type:', req.user.userType);
+
+  let query;
+  
+  // Different logic based on user type
+  if (req.user.userType === 'worker' || req.user.userType === 'employee') {
+    // Workers/employees: view their own applications
+    console.log('   → Worker/employee: finding their own applications');
+    query = { worker: req.user._id };
+  } else if (req.user.userType === 'employer') {
+    // Employers: view applications to their jobs
+    console.log('   → Employer: finding applications to their jobs');
+    const jobIds = await Job.distinct('_id', { employer: req.user._id });
+    console.log('   → Found', jobIds.length, 'jobs for this employer');
+    query = { job: { $in: jobIds } };
+  } else {
+    return next(new AppError('Invalid user type for this operation', 403));
   }
 
-  // Find applications for the authenticated worker
-  const applications = await Application.find({ worker: req.user._id })
+  // Find applications
+  const applications = await Application.find(query)
     .populate({
       path: 'job',
       populate: {
@@ -220,7 +234,9 @@ exports.listMyApplications = catchAsync(async (req, res, next) => {
     })
     .sort({ createdAt: -1 });
 
-  const workerProfiles = await WorkerProfile.find({ user: req.user._id });
+  console.log('   → Found', applications.length, 'applications');
+
+  const workerProfiles = await WorkerProfile.find();
   const profileMap = new Map(
     workerProfiles.map((profile) => [profile.user.toString(), profile])
   );

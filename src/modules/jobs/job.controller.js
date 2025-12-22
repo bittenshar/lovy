@@ -227,11 +227,12 @@ exports.listJobsForWorker = catchAsync(async (req, res) => {
     }
 
     const dto = await buildJobResponse(job, req.user);
+    console.log(`   Job ${job._id}: ${job.title} - hasApplied: ${dto.hasApplied}`);
     if (hasLocation && typeof distanceKm === 'number') dto.distance = distanceKm;
     out.push(dto);
   }
 
-  if (hasLocation) {
+  console.log(`✅ [JOBS-WORKER] Found ${jobs.length} total jobs, returning ${out.length} after filters`);
     out.sort((a, b) => {
       if (a.distance == null && b.distance == null) return 0;
       if (a.distance == null) return 1;

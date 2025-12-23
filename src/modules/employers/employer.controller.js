@@ -11,8 +11,8 @@ const AppError = require('../../shared/utils/appError');
 const { minimizeProfileImages } = require('../../shared/utils/logoUrlMinimizer');
 
 const ensureEmployer = (req, employerId) => {
-  if (req.user.userType !== 'employer') {
-    throw new AppError('Only employers can perform this action', 403);
+  if (req.user.userType !== 'employer' && req.user.userType !== 'employee') {
+    throw new AppError('Only employers and employees can perform this action', 403);
   }
   if (employerId && req.user._id.toString() !== employerId.toString()) {
     throw new AppError('You can only access your own employer data', 403);

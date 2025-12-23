@@ -13,9 +13,11 @@ router.get('/', requirePermissions('view_applications', { requireBusinessId: fal
 
 // Employer-specific applications route
 router.get('/employer', (req, res, next) => {
-  if (req.user.userType !== 'employer') {
-    return next(new AppError('Access denied - only employers can view job applications', 403));
+  if (req.user.userType !== 'employer' && req.user.userType !== 'employee') {
+    console.log('❌ [APP-ROUTE] /employer access denied for user type:', req.user.userType);
+    return next(new AppError('Access denied - only employers and employees can view job applications', 403));
   }
+  console.log('✅ [APP-ROUTE] /employer access granted for user type:', req.user.userType);
   return controller.listApplications(req, res, next);
 });
 

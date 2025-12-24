@@ -210,9 +210,9 @@ exports.listMyApplications = catchAsync(async (req, res, next) => {
   let query;
   
   // Different logic based on user type
-  if (req.user.userType === 'worker' || req.user.userType === 'employee') {
-    // Workers/employees: view their own applications
-    console.log('   → Worker/employee: finding their own applications');
+  if (req.user.userType === 'worker') {
+    // Workers: view their own applications
+    console.log('   → Worker: finding their own applications');
     query = { worker: req.user._id };
   } else if (req.user.userType === 'employer') {
     // Employers: view applications to their jobs
@@ -304,17 +304,17 @@ exports.updateApplication = catchAsync(async (req, res, next) => {
     const updatedApplication = await Application.findById(application._id).populate('job');
     return res.status(200).json({ status: 'success', data: updatedApplication });
   }
-  if (req.user.userType === 'employer' || req.user.userType === 'employee') {
+  if (req.user.userType === 'employer') {
     if (!application.job) {
       return next(new AppError('Job information missing for application', 400));
     }
 
-    console.log('🔍 Employer/Employee hiring attempt:');
+    console.log('🔍 Employer hiring attempt:');
     console.log('   User ID:', req.user._id);
     console.log('   User Type:', req.user.userType);
     console.log('   Job Business ID:', application.job.business);
 
-    // For employer/employee hiring, verify access to the business
+    // For employer hiring, verify access to the business
     const Business = require('../../modules/businesses/business.model');
     const TeamMember = require('../../modules/businesses/teamMember.model');
     const business = await Business.findById(application.job.business);
@@ -335,28 +335,6 @@ exports.updateApplication = catchAsync(async (req, res, next) => {
     if (businessOwnerId === userId) {
       hasAccess = true;
       console.log('✅ User is the business owner');
-    } else if (req.user.userType === 'employee') {
-      // For employees, check if they are a team member with manage_applications permission
-      const teamMember = await TeamMember.findOne({
-        user: userId,
-        business: application.job.business,
-        active: true
-      });
-      
-      if (teamMember) {
-        // Check if team member has manage_applications permission
-        const permissions = teamMember.permissions || [];
-        const rolePermissions = require('../../shared/middlewares/permissionMiddleware'); // We'll validate differently
-        
-        // For now, allow manager/supervisor/admin roles
-        if (['admin', 'manager', 'supervisor'].includes(teamMember.role)) {
-          hasAccess = true;
-          console.log(`✅ Employee is a team member with role: ${teamMember.role}`);
-        } else if (permissions.includes('manage_applications')) {
-          hasAccess = true;
-          console.log('✅ Employee has manage_applications permission');
-        }
-      }
     }
     
     if (!hasAccess) {

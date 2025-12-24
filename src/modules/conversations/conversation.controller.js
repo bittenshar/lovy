@@ -112,8 +112,8 @@ exports.createConversation = catchAsync(async (req, res, next) => {
       const name1 = user1?.firstName || user1?.email || 'User';
       const name2 = user2?.firstName || user2?.email || 'User';
       
-      const role1 = user1?.role || 'employee';
-      const role2 = user2?.role || 'employee';
+      const role1 = user1?.role || 'worker';
+      const role2 = user2?.role || 'worker';
       
       title = [
         { role: role1, name: name1 },
@@ -124,7 +124,7 @@ exports.createConversation = catchAsync(async (req, res, next) => {
     } catch (err) {
       console.error('❌ [CONV] Error generating title:', err.message);
       title = [
-        { role: 'employee', name: 'User1' },
+        { role: 'worker', name: 'User1' },
         { role: 'worker', name: 'User2' }
       ];
     }

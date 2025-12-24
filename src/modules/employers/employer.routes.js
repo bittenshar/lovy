@@ -6,7 +6,7 @@ const { protect, restrictTo } = require('../../shared/middlewares/auth.middlewar
 
 const router = express.Router();
 
-router.use(protect, restrictTo('employer', 'employee'));
+router.use(protect, restrictTo('employer'));
 
 // Debug logging for employer routes
 router.use((req, res, next) => {

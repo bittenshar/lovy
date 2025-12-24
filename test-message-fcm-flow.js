@@ -94,8 +94,8 @@ async function testMessageFcmFlow() {
       conversation = await Conversation.create({
         participants: [sender._id, receiver._id],
         title: [
-          { role: sender.role || 'employee', name: sender.firstName || sender.email },
-          { role: receiver.role || 'employee', name: receiver.firstName || receiver.email }
+          { role: sender.role || 'worker', name: sender.firstName || sender.email },
+          { role: receiver.role || 'worker', name: receiver.firstName || receiver.email }
         ]
       });
       await log('SUCCESS', `Conversation created: ${conversation._id}`);

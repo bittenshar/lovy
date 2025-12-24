@@ -47,7 +47,7 @@ const conversationSchema = new mongoose.Schema({
     required: true,
   }],
   title: [{
-    role: { type: String, enum: ['worker', 'employee'] },
+    role: { type: String, enum: ['worker'] },
     name: { type: String }
   }],
   lastMessage: mongoose.Schema.Types.ObjectId,
@@ -142,7 +142,7 @@ async function main() {
             participants: [sender.userId, receiver.userId],
             title: [
               { name: sender.name, role: 'worker' },
-              { name: receiver.name, role: 'employee' }
+              { name: receiver.name, role: 'worker' }
             ]
           });
           console.log(`\n💬 ${sender.email} → ${receiver.email}`);

@@ -8,8 +8,19 @@ const router = express.Router({ mergeParams: true });
 
 router.use(protect);
 
-// Application management routes with permission protection
-router.get('/', requirePermissions('view_applications', { requireBusinessId: false }), controller.listApplications);
+// Application management routes
+// For workers: redirect to /me to view their own applications
+// For employers: allow viewing all applications for their jobs
+router.get('/', (req, res, next) => {
+  if (req.user.userType === 'worker') {
+    console.log('✅ [APP-ROUTE] Worker redirecting to /me');
+    return controller.listMyApplications(req, res, next);
+  } else if (req.user.userType === 'employer') {
+    console.log('✅ [APP-ROUTE] Employer accessing all applications');
+    return controller.listMyApplications(req, res, next);
+  }
+  return next(new AppError('Access denied - invalid user type', 403));
+});
 
 // Employer-specific applications route
 router.get('/employer', (req, res, next) => {

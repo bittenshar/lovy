@@ -48,8 +48,8 @@ router.get('/me', (req, res, next) => {
 
 router.get('/worker/:workerId', requirePermissions('view_applications', { requireBusinessId: false }), controller.getWorkerApplications);
 
-// Get applications for a specific team member
-router.get('/team-member/:teamMemberId', requirePermissions('view_applications', { requireBusinessId: false }), controller.getApplicationsByTeamMember);
+// Get applications for a specific team member (no permission required - controller handles auth)
+router.get('/team-member/:teamMemberId', controller.getApplicationsByTeamMember);
 
 // Allow workers to withdraw their own applications (MORE SPECIFIC - comes before generic :applicationId)
 router.patch('/me/:applicationId', (req, res, next) => {

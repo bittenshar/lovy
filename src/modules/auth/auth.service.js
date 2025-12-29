@@ -25,6 +25,20 @@ const buildUserResponse = async (user) => {
 
   if (base.userType === 'worker') {
     const profile = await WorkerProfile.findOne({ user: user._id });
+    
+    // Check if this worker is a team member of any employer
+    const TeamMember = require('../businesses/teamMember.model');
+    const isTeamMember = await TeamMember.exists({ 
+      user: user._id, 
+      active: true 
+    });
+    
+    // Add team member flag to response
+    if (isTeamMember) {
+      base.isTeamMember = true;
+      base.userType = 'team_member'; // Override userType for team members
+    }
+    
     return { user: base, workerProfile: profile };
   }
 

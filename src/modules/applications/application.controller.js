@@ -668,7 +668,7 @@ exports.listApplications = catchAsync(async (req, res, next) => {
 });
 
 exports.getApplicationsByTeamMember = catchAsync(async (req, res, next) => {
-  const { teamMemberId } = req.params;
+  let { teamMemberId } = req.params;
 
   // Check if user exists and has a valid token
   if (!req.user || !req.user._id) {
@@ -676,6 +676,20 @@ exports.getApplicationsByTeamMember = catchAsync(async (req, res, next) => {
   }
 
   const TeamMember = require('../../modules/businesses/teamMember.model');
+
+  // If teamMemberId is 'me', get the current user's team member record
+  if (teamMemberId === 'me') {
+    const currentTeamMember = await TeamMember.findOne({
+      user: req.user._id,
+      active: true
+    });
+
+    if (!currentTeamMember) {
+      return next(new AppError('You are not a team member of any business', 404));
+    }
+
+    teamMemberId = currentTeamMember._id.toString();
+  }
 
   // Get the team member details
   const teamMember = await TeamMember.findById(teamMemberId).populate('user', '_id');
@@ -690,16 +704,17 @@ exports.getApplicationsByTeamMember = catchAsync(async (req, res, next) => {
     active: true
   });
 
-  if (!currentUserTeamMember && req.user.userType !== 'employer') {
-    return next(new AppError('You do not have access to this team member\'s data', 403));
-  }
-
-  // For employers, check if they own the business or have access
+  // Allow access if:
+  // 1. User is from the same business (team member)
+  // 2. User is the business owner (employer)
+  // 3. User is the team member themselves (me)
   if (req.user.userType === 'employer') {
     const business = await require('../../modules/businesses/business.model').findById(teamMember.business);
     if (business && business.owner.toString() !== req.user._id.toString() && !currentUserTeamMember) {
       return next(new AppError('You do not have access to this team member\'s data', 403));
     }
+  } else if (!currentUserTeamMember) {
+    return next(new AppError('You do not have access to this team member\'s data', 403));
   }
 
   // Get the user ID from team member

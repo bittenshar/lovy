@@ -1,0 +1,259 @@
+{
+  "info": {
+    "name": "WorkConnect Test Data",
+    "description": "Test data for WorkConnect API",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Test Data Reference",
+      "item": [
+        {
+          "name": "Register Worker",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"worker@example.com\",\n  \"password\": \"Password123!\",\n  \"firstName\": \"John\",\n  \"lastName\": \"Doe\",\n  \"userType\": \"worker\"\n}"
+            },
+            "url": {
+              "raw": "{{BASE_URL}}/api/auth/register",
+              "host": ["{{BASE_URL}}"],
+              "path": ["api", "auth", "register"]
+            }
+          }
+        },
+        {
+          "name": "Register Employer",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"employer@example.com\",\n  \"password\": \"Password123!\",\n  \"firstName\": \"Jane\",\n  \"lastName\": \"Smith\",\n  \"userType\": \"employer\"\n}"
+            },
+            "url": {
+              "raw": "{{BASE_URL}}/api/auth/register",
+              "host": ["{{BASE_URL}}"],
+              "path": ["api", "auth", "register"]
+            }
+          }
+        },
+        {
+          "name": "Create Business",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{TOKEN}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Tech Solutions Inc\",\n  \"industry\": \"Technology\",\n  \"description\": \"Leading tech solutions provider\",\n  \"address\": {\n    \"street\": \"123 Main Street\",\n    \"city\": \"San Francisco\",\n    \"state\": \"CA\",\n    \"zipCode\": \"94105\",\n    \"country\": \"USA\"\n  },\n  \"phone\": \"+1-555-0100\",\n  \"email\": \"info@techsolutions.com\",\n  \"website\": \"https://techsolutions.com\"\n}"
+            },
+            "url": {
+              "raw": "{{BASE_URL}}/api/businesses",
+              "host": ["{{BASE_URL}}"],
+              "path": ["api", "businesses"]
+            }
+          }
+        },
+        {
+          "name": "Update Worker Profile",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{WORKER_TOKEN}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"bio\": \"Experienced software developer with 5 years of experience\",\n  \"skills\": [\"JavaScript\", \"Node.js\", \"React\", \"MongoDB\", \"AWS\"],\n  \"hourlyRate\": 50,\n  \"availability\": \"full-time\",\n  \"location\": {\n    \"city\": \"San Francisco\",\n    \"state\": \"CA\",\n    \"country\": \"USA\"\n  },\n  \"experience\": 5,\n  \"certifications\": [\"AWS Solutions Architect\", \"Google Cloud Professional\"]\n}"
+            },
+            "url": {
+              "raw": "{{BASE_URL}}/api/workers/me",
+              "host": ["{{BASE_URL}}"],
+              "path": ["api", "workers", "me"]
+            }
+          }
+        },
+        {
+          "name": "Create Job",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{TOKEN}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Senior Software Developer\",\n  \"description\": \"We are looking for an experienced software developer to join our team and work on innovative projects\",\n  \"requirements\": [\"JavaScript\", \"Node.js\", \"React\", \"MongoDB\", \"5+ years experience\"],\n  \"location\": {\n    \"city\": \"San Francisco\",\n    \"state\": \"CA\",\n    \"country\": \"USA\"\n  },\n  \"jobType\": \"Full-time\",\n  \"hourlyRate\": 50,\n  \"currency\": \"USD\",\n  \"startDate\": \"2025-01-15\",\n  \"endDate\": \"2025-12-31\",\n  \"maxHoursPerWeek\": 40,\n  \"status\": \"open\",\n  \"benefits\": [\"Health Insurance\", \"401k\", \"Remote Work\"]\n}"
+            },
+            "url": {
+              "raw": "{{BASE_URL}}/api/jobs",
+              "host": ["{{BASE_URL}}"],
+              "path": ["api", "jobs"]
+            }
+          }
+        },
+        {
+          "name": "List Team Members",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{TOKEN}}"
+              }
+            ],
+            "description": "Get all team members for a business",
+            "url": {
+              "raw": "{{BASE_URL}}/api/businesses/{{BUSINESS_ID}}/team-members",
+              "host": ["{{BASE_URL}}"],
+              "path": ["api", "businesses", "{{BUSINESS_ID}}", "team-members"]
+            }
+          }
+        },
+        {
+          "name": "Create Team Member",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{TOKEN}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"teamMember@techsolutions.com\",\n  \"role\": \"manager\",\n  \"permissions\": [\"invite_team_members\", \"edit_jobs\", \"create_jobs\", \"edit_team_members\"]\n}"
+            },
+            "description": "Add a new team member with specific role and permissions",
+            "url": {
+              "raw": "{{BASE_URL}}/api/businesses/{{BUSINESS_ID}}/team-members",
+              "host": ["{{BASE_URL}}"],
+              "path": ["api", "businesses", "{{BUSINESS_ID}}", "team-members"]
+            }
+          }
+        },
+        {
+          "name": "Get Team Member",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{TOKEN}}"
+              }
+            ],
+            "description": "Get a specific team member details",
+            "url": {
+              "raw": "{{BASE_URL}}/api/businesses/{{BUSINESS_ID}}/team-members/{{TEAM_MEMBER_ID}}",
+              "host": ["{{BASE_URL}}"],
+              "path": ["api", "businesses", "{{BUSINESS_ID}}", "team-members", "{{TEAM_MEMBER_ID}}"]
+            }
+          }
+        },
+        {
+          "name": "Update Team Member",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{TOKEN}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"role\": \"admin\",\n  \"permissions\": [\"invite_team_members\", \"edit_jobs\", \"create_jobs\", \"edit_team_members\", \"hire_workers\", \"manage_permissions\"]\n}"
+            },
+            "description": "Update team member role and permissions",
+            "url": {
+              "raw": "{{BASE_URL}}/api/businesses/{{BUSINESS_ID}}/team-members/{{TEAM_MEMBER_ID}}",
+              "host": ["{{BASE_URL}}"],
+              "path": ["api", "businesses", "{{BUSINESS_ID}}", "team-members", "{{TEAM_MEMBER_ID}}"]
+            }
+          }
+        },
+        {
+          "name": "Delete Team Member",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{TOKEN}}"
+              }
+            ],
+            "description": "Remove a team member from the business",
+            "url": {
+              "raw": "{{BASE_URL}}/api/businesses/{{BUSINESS_ID}}/team-members/{{TEAM_MEMBER_ID}}",
+              "host": ["{{BASE_URL}}"],
+              "path": ["api", "businesses", "{{BUSINESS_ID}}", "team-members", "{{TEAM_MEMBER_ID}}"]
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "BASE_URL",
+      "value": "http://localhost:3000",
+      "type": "string"
+    },
+    {
+      "key": "TOKEN",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "WORKER_TOKEN",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "TEAM_MEMBER_ID",
+      "value": "",
+      "type": "string"
+    }
+  ]
+}

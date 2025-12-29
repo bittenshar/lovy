@@ -16,68 +16,12 @@ const teamMemberSchema = new mongoose.Schema(
     email: { type: String, required: true, trim: true },
     role: {
       type: String,
-      enum: ['owner', 'admin', 'manager', 'supervisor', 'staff'],
+      enum: ['owner', 'admin'],
       default: 'staff'
     },
     permissions: {
-      type: [
-        {
-          type: String,
-          enum: [
-            // Business Management
-            'create_business',
-            'edit_business',
-            'delete_business',
-            'view_business_analytics',
-            
-            // Job Management
-            'create_jobs',
-            'edit_jobs',
-            'delete_jobs',
-            'view_jobs',
-            'post_jobs',
-            
-            // Worker & Application Management
-            'hire_workers',
-            'fire_workers',
-            'view_applications',
-            'manage_applications',
-            'approve_applications',
-            'reject_applications',
-            
-            // Schedule & Attendance Management
-            'create_schedules',
-            'edit_schedules',
-            'delete_schedules',
-            'manage_schedules',
-            'view_attendance',
-            'manage_attendance',
-            'approve_attendance',
-            
-            // Payment & Financial Management
-            'view_payments',
-            'manage_payments',
-            'process_payments',
-            'view_financial_reports',
-            
-            // Team Management
-            'invite_team_members',
-            'edit_team_members',
-            'remove_team_members',
-            'manage_permissions',
-            
-            // Analytics & Reporting
-            'view_analytics',
-            'view_reports',
-            'export_data',
-            
-            // System Administration
-            'manage_settings',
-            'view_audit_logs',
-            'manage_integrations'
-          ]
-        }
-      ],
+      type: [String],
+      enum: ['full_access'],
       default: []
     },
     assignedLocations: [

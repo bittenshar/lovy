@@ -1,0 +1,285 @@
+{
+  "id": "workconnect-env",
+  "name": "WorkConnect API Environment",
+  "values": [
+    {
+      "key": "BASE_URL",
+      "value": "http://localhost:3000",
+      "type": "string",
+      "enabled": true
+    },
+    {
+      "key": "TOKEN",
+      "value": "",
+      "type": "string",
+      "enabled": true
+    },
+    {
+      "key": "WORKER_TOKEN",
+      "value": "",
+      "type": "string",
+      "enabled": true
+    },
+    {
+      "key": "BUSINESS_ID",
+      "value": "",
+      "type": "string",
+      "enabled": true
+    },
+    {
+      "key": "WORKER_ID",
+      "value": "",
+      "type": "string",
+      "enabled": true
+    },
+    {
+      "key": "JOB_ID",
+      "value": "",
+      "type": "string",
+      "enabled": true
+    },
+    {
+      "key": "TEAM_MEMBER_ID",
+      "value": "",
+      "type": "string",
+      "enabled": true
+    },
+    {
+      "key": "WORKER_EMAIL",
+      "value": "worker@example.com",
+      "type": "string",
+      "enabled": true
+    },
+    {
+      "key": "WORKER_PASSWORD",
+      "value": "Password123!",
+      "type": "string",
+      "enabled": true
+    },
+    {
+      "key": "WORKER_FIRST_NAME",
+      "value": "John",
+      "type": "string",
+      "enabled": true
+    },
+    {
+      "key": "WORKER_LAST_NAME",
+      "value": "Doe",
+      "type": "string",
+      "enabled": true
+    },
+    {
+      "key": "EMPLOYER_EMAIL",
+      "value": "employer@example.com",
+      "type": "string",
+      "enabled": true
+    },
+    {
+      "key": "EMPLOYER_PASSWORD",
+      "value": "Password123!",
+      "type": "string",
+      "enabled": true
+    },
+    {
+      "key": "EMPLOYER_FIRST_NAME",
+      "value": "Jane",
+      "type": "string",
+      "enabled": true
+    },
+    {
+      "key": "EMPLOYER_LAST_NAME",
+      "value": "Smith",
+      "type": "string",
+      "enabled": true
+    },
+    {
+      "key": "BUSINESS_NAME",
+      "value": "Tech Solutions Inc",
+      "type": "string",
+      "enabled": true
+    },
+    {
+      "key": "BUSINESS_INDUSTRY",
+      "value": "Technology",
+      "type": "string",
+      "enabled": true
+    },
+    {
+      "key": "BUSINESS_DESCRIPTION",
+      "value": "Leading tech solutions provider",
+      "type": "string",
+      "enabled": true
+    },
+    {
+      "key": "BUSINESS_STREET",
+      "value": "123 Main Street",
+      "type": "string",
+      "enabled": true
+    },
+    {
+      "key": "BUSINESS_CITY",
+      "value": "San Francisco",
+      "type": "string",
+      "enabled": true
+    },
+    {
+      "key": "BUSINESS_STATE",
+      "value": "CA",
+      "type": "string",
+      "enabled": true
+    },
+    {
+      "key": "BUSINESS_ZIP",
+      "value": "94105",
+      "type": "string",
+      "enabled": true
+    },
+    {
+      "key": "BUSINESS_COUNTRY",
+      "value": "USA",
+      "type": "string",
+      "enabled": true
+    },
+    {
+      "key": "BUSINESS_PHONE",
+      "value": "+1-555-0100",
+      "type": "string",
+      "enabled": true
+    },
+    {
+      "key": "BUSINESS_EMAIL",
+      "value": "info@techsolutions.com",
+      "type": "string",
+      "enabled": true
+    },
+    {
+      "key": "BUSINESS_WEBSITE",
+      "value": "https://techsolutions.com",
+      "type": "string",
+      "enabled": true
+    },
+    {
+      "key": "TEAM_MEMBER_EMAIL",
+      "value": "teamMember@techsolutions.com",
+      "type": "string",
+      "enabled": true
+    },
+    {
+      "key": "TEAM_MEMBER_ROLE",
+      "value": "Manager",
+      "type": "string",
+      "enabled": true
+    },
+    {
+      "key": "WORKER_BIO",
+      "value": "Experienced software developer with 5 years of experience",
+      "type": "string",
+      "enabled": true
+    },
+    {
+      "key": "WORKER_SKILLS",
+      "value": "JavaScript,Node.js,React,MongoDB,AWS",
+      "type": "string",
+      "enabled": true
+    },
+    {
+      "key": "WORKER_HOURLY_RATE",
+      "value": "50",
+      "type": "string",
+      "enabled": true
+    },
+    {
+      "key": "WORKER_AVAILABILITY",
+      "value": "full-time",
+      "type": "string",
+      "enabled": true
+    },
+    {
+      "key": "WORKER_EXPERIENCE_YEARS",
+      "value": "5",
+      "type": "string",
+      "enabled": true
+    },
+    {
+      "key": "WORKER_CERTIFICATIONS",
+      "value": "AWS Solutions Architect,Google Cloud Professional",
+      "type": "string",
+      "enabled": true
+    },
+    {
+      "key": "JOB_TITLE",
+      "value": "Senior Software Developer",
+      "type": "string",
+      "enabled": true
+    },
+    {
+      "key": "JOB_DESCRIPTION",
+      "value": "We are looking for an experienced software developer to join our team and work on innovative projects",
+      "type": "string",
+      "enabled": true
+    },
+    {
+      "key": "JOB_REQUIREMENTS",
+      "value": "JavaScript,Node.js,React,MongoDB,5+ years experience",
+      "type": "string",
+      "enabled": true
+    },
+    {
+      "key": "JOB_TYPE",
+      "value": "Full-time",
+      "type": "string",
+      "enabled": true
+    },
+    {
+      "key": "JOB_HOURLY_RATE",
+      "value": "50",
+      "type": "string",
+      "enabled": true
+    },
+    {
+      "key": "JOB_CURRENCY",
+      "value": "USD",
+      "type": "string",
+      "enabled": true
+    },
+    {
+      "key": "JOB_START_DATE",
+      "value": "2025-01-15",
+      "type": "string",
+      "enabled": true
+    },
+    {
+      "key": "JOB_END_DATE",
+      "value": "2025-12-31",
+      "type": "string",
+      "enabled": true
+    },
+    {
+      "key": "JOB_MAX_HOURS_PER_WEEK",
+      "value": "40",
+      "type": "string",
+      "enabled": true
+    },
+    {
+      "key": "JOB_STATUS",
+      "value": "open",
+      "type": "string",
+      "enabled": true
+    },
+    {
+      "key": "JOB_BENEFITS",
+      "value": "Health Insurance,401k,Remote Work",
+      "type": "string",
+      "enabled": true
+    },
+    {
+      "key": "APPLICATION_COVER_LETTER",
+      "value": "I am very interested in this position. My experience aligns perfectly with your requirements. I have 5+ years of experience with Node.js and React, and I am excited about the opportunity to work with your team.",
+      "type": "string",
+      "enabled": true
+    }
+  ],
+  "_postman_variable_scope": "environment",
+  "_postman_exported_at": "2025-01-15T10:00:00.000Z",
+  "_postman_exported_using": "Postman/11.0.0"
+}

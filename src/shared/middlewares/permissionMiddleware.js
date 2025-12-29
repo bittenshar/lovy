@@ -10,181 +10,14 @@ const TeamMember = require('../../modules/businesses/teamMember.model');
 
 // All available permissions in the system
 const ALL_PERMISSIONS = {
-  // Full Access
-  'full_access': 'Full Access - All Permissions',
   
-  // Business Management
-  'create_business': 'Create Business',
-  'edit_business': 'Edit Business',
-  'delete_business': 'Delete Business',
-  'view_business_analytics': 'View Business Analytics',
-  
-  // Job Management
-  'create_jobs': 'Create Jobs',
-  'edit_jobs': 'Edit Jobs',
-  'delete_jobs': 'Delete Jobs',
-  'view_jobs': 'View Jobs',
-  'post_jobs': 'Post Jobs',
-  
-  // Worker & Application Management
-  'hire_workers': 'Hire Workers',
-  'fire_workers': 'Fire Workers',
-  'view_applications': 'View Applications',
-  'manage_applications': 'Manage Applications',
-  'approve_applications': 'Approve Applications',
-  'reject_applications': 'Reject Applications',
-  
-  // Schedule & Attendance Management
-  'create_schedules': 'Create Schedules',
-  'edit_schedules': 'Edit Schedules',
-  'delete_schedules': 'Delete Schedules',
-  'manage_schedules': 'Manage Schedules',
-  'view_attendance': 'View Attendance',
-  'manage_attendance': 'Manage Attendance',
-  'approve_attendance': 'Approve Attendance',
-  
-  // Payment & Financial Management
-  'view_payments': 'View Payments',
-  'manage_payments': 'Manage Payments',
-  'process_payments': 'Process Payments',
-  'view_financial_reports': 'View Financial Reports',
-  
-  // Team Management
-  'invite_team_members': 'Invite Team Members',
-  'edit_team_members': 'Edit Team Members',
-  'view_team_members': 'View Team Members',
-  'manage_team_members': 'Manage Team Members',
-  'remove_team_members': 'Remove Team Members',
-  'manage_permissions': 'Manage Permissions',
-  
-  // Communication & Messaging
-  'view_messages': 'View Messages',
-  'send_messages': 'Send Messages',
-  'view_notifications': 'View Notifications',
-  'send_notifications': 'Send Notifications',
-  
-  // Business Profile & Settings
-  'view_business_profile': 'View Business Profile',
-  'edit_business_profile': 'Edit Business Profile',
-  'view_dashboard': 'View Dashboard',
-  'view_schedules': 'View Schedules',
-  'view_budget': 'View Budget',
-  'manage_budget': 'Manage Budget',
-  'manage_subscriptions': 'Manage Subscriptions',
-  
-  // Analytics & Reporting
-  'view_analytics': 'View Analytics',
-  'view_reports': 'View Reports',
-  'export_data': 'Export Data',
-  
-  // System Administration
-  'manage_settings': 'Manage Settings',
-  'view_audit_logs': 'View Audit Logs',
-  'manage_integrations': 'Manage Integrations',
 };
 
 // Role-based default permissions
 const ROLE_PERMISSIONS = {
   'owner': Object.keys(ALL_PERMISSIONS), // Owners get all permissions
   'admin': Object.keys(ALL_PERMISSIONS), // Admins get all permissions
-  'manager': [
-    // Business Management
-    'edit_business',
-    'view_business_analytics',
-    'view_business_profile',
-    'edit_business_profile',
-    'view_dashboard',
-    // Job Management
-    'create_jobs',
-    'edit_jobs',
-    'view_jobs',
-    'post_jobs',
-    // Worker & Application Management
-    'hire_workers',
-    'view_applications',
-    'manage_applications',
-    'approve_applications',
-    'reject_applications',
-    // Schedule & Attendance Management
-    'create_schedules',
-    'edit_schedules',
-    'manage_schedules',
-    'view_schedules',
-    'view_attendance',
-    'manage_attendance',
-    'approve_attendance',
-    // Payment & Financial Management
-    'view_payments',
-    'manage_payments',
-    'process_payments',
-    'view_financial_reports',
-    'view_budget',
-    'manage_budget',
-    // Team Management
-    'invite_team_members',
-    'edit_team_members',
-    'view_team_members',
-    'manage_team_members',
-    // Communication & Messaging
-    'view_messages',
-    'send_messages',
-    'view_notifications',
-    'send_notifications',
-    // Analytics & Reporting
-    'view_analytics',
-    'view_reports',
-    'export_data',
-  ],
-  'supervisor': [
-    // Business Profile
-    'view_business_profile',
-    'view_dashboard',
-    // Job Management
-    'view_jobs',
-    'post_jobs',
-    // Worker & Application Management
-    'view_applications',
-    'manage_applications',
-    // Schedule & Attendance Management
-    'create_schedules',
-    'edit_schedules',
-    'manage_schedules',
-    'view_schedules',
-    'view_attendance',
-    'manage_attendance',
-    // Payment & Financial Management
-    'view_payments',
-    'view_budget',
-    // Team Management
-    'view_team_members',
-    // Communication & Messaging
-    'view_messages',
-    'send_messages',
-    'view_notifications',
-    // Analytics & Reporting
-    'view_analytics',
-    'view_reports',
-  ],
-  'staff': [
-    // Business Profile
-    'view_business_profile',
-    'view_dashboard',
-    // Job Management
-    'view_jobs',
-    // Worker & Application Management
-    'view_applications',
-    // Schedule & Attendance Management
-    'view_schedules',
-    'view_attendance',
-    // Team Management
-    'view_team_members',
-    // Communication & Messaging
-    'view_messages',
-    'send_messages',
-    'view_notifications',
-    // Analytics & Reporting
-    'view_analytics',
-  ],
+ 
 };
 
 // API endpoint to permission mapping
@@ -298,10 +131,6 @@ async function getUserPermissions(userId, businessId) {
  * Check if user has a specific permission
  */
 function hasPermission(userPermissions, requiredPermission) {
-  // full_access grants all permissions
-  if (userPermissions.includes('full_access')) {
-    return true;
-  }
   return userPermissions.includes(requiredPermission);
 }
 

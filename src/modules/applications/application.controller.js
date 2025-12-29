@@ -210,8 +210,40 @@ exports.listMyApplications = catchAsync(async (req, res, next) => {
   const TeamMember = require('../../modules/businesses/teamMember.model');
   let query;
   
+  // Check if filtering by team member ID
+  if (req.query.teamMemberId) {
+    const teamMember = await TeamMember.findById(req.query.teamMemberId).populate('user', '_id');
+    if (!teamMember) {
+      return next(new AppError('Team member not found', 404));
+    }
+
+    // Authorization check: user must be from the same business or have full_access
+    const currentUserTeamMember = await TeamMember.findOne({
+      user: req.user._id,
+      business: teamMember.business,
+      active: true
+    });
+
+    if (!currentUserTeamMember && req.user.userType !== 'employer') {
+      return next(new AppError('You do not have access to this team member\'s data', 403));
+    }
+
+    // For employers, check if they own the business
+    if (req.user.userType === 'employer') {
+      const Business = require('../../modules/businesses/business.model');
+      const business = await Business.findById(teamMember.business);
+      if (business && business.owner.toString() !== req.user._id.toString() && !currentUserTeamMember) {
+        return next(new AppError('You do not have access to this team member\'s data', 403));
+      }
+    }
+
+    // Get all jobs for the team member's business
+    const jobIds = await Job.distinct('_id', { business: teamMember.business });
+    query = { job: { $in: jobIds } };
+    console.log('📋 [APP-CONTROLLER] Filtering applications by team member business');
+  }
   // Different logic based on user type
-  if (req.user.userType === 'worker') {
+  else if (req.user.userType === 'worker') {
     // Workers: view their own applications
     console.log('   → Worker: finding their own applications');
     query = { worker: req.user._id };
@@ -430,6 +462,41 @@ const normalizeIdValue = (value) => {
 
 exports.listApplications = catchAsync(async (req, res, next) => {
   const filter = {};
+  const TeamMember = require('../../modules/businesses/teamMember.model');
+  
+  // Check if filtering by team member
+  if (req.query.teamMemberId) {
+    const teamMember = await TeamMember.findById(req.query.teamMemberId).populate('user', '_id');
+    if (!teamMember) {
+      return next(new AppError('Team member not found', 404));
+    }
+
+    // Authorization check: user must be from the same business or have full_access
+    const currentUserTeamMember = await TeamMember.findOne({
+      user: req.user._id,
+      business: teamMember.business,
+      active: true
+    });
+
+    if (!currentUserTeamMember && req.user.userType !== 'employer') {
+      return next(new AppError('You do not have access to this team member\'s data', 403));
+    }
+
+    // For employers, check if they own the business
+    if (req.user.userType === 'employer') {
+      const Business = require('../../modules/businesses/business.model');
+      const business = await Business.findById(teamMember.business);
+      if (business && business.owner.toString() !== req.user._id.toString() && !currentUserTeamMember) {
+        return next(new AppError('You do not have access to this team member\'s data', 403));
+      }
+    }
+
+    // Get all jobs for the team member's business
+    const jobIds = await Job.distinct('_id', { business: teamMember.business });
+    filter.job = { $in: jobIds };
+    console.log('📋 [APP-CONTROLLER] Filtering applications by team member business');
+  }
+  
   if (req.query.workerId) {
     filter.worker = req.query.workerId;
   }
@@ -453,8 +520,6 @@ exports.listApplications = catchAsync(async (req, res, next) => {
   );
 
   if (req.user.userType === 'employer') {
-    const TeamMember = require('../../modules/businesses/teamMember.model');
-    
     // Check if user is a team member with full_access permission
     const teamMemberWithFullAccess = await TeamMember.findOne({
       user: req.user._id,
@@ -599,5 +664,83 @@ exports.listApplications = catchAsync(async (req, res, next) => {
       limit,
       hasMore: skip + data.length < total
     }
+  });
+});
+
+exports.getApplicationsByTeamMember = catchAsync(async (req, res, next) => {
+  const { teamMemberId } = req.params;
+
+  // Check if user exists and has a valid token
+  if (!req.user || !req.user._id) {
+    return next(new AppError('Authentication required', 401));
+  }
+
+  const TeamMember = require('../../modules/businesses/teamMember.model');
+
+  // Get the team member details
+  const teamMember = await TeamMember.findById(teamMemberId).populate('user', '_id');
+  if (!teamMember) {
+    return next(new AppError('Team member not found', 404));
+  }
+
+  // Authorization check: user must be from the same business or have full_access
+  const currentUserTeamMember = await TeamMember.findOne({
+    user: req.user._id,
+    business: teamMember.business,
+    active: true
+  });
+
+  if (!currentUserTeamMember && req.user.userType !== 'employer') {
+    return next(new AppError('You do not have access to this team member\'s data', 403));
+  }
+
+  // For employers, check if they own the business or have access
+  if (req.user.userType === 'employer') {
+    const business = await require('../../modules/businesses/business.model').findById(teamMember.business);
+    if (business && business.owner.toString() !== req.user._id.toString() && !currentUserTeamMember) {
+      return next(new AppError('You do not have access to this team member\'s data', 403));
+    }
+  }
+
+  // Get the user ID from team member
+  const userId = teamMember.user._id;
+
+  // Find applications for this user's business
+  const applications = await Application.find({
+    job: { $in: await Job.distinct('_id', { business: teamMember.business }) }
+  })
+    .populate({
+      path: 'job',
+      populate: {
+        path: 'business',
+        select: 'name description logo logoSmall logoMedium logoUrl location'
+      }
+    })
+    .populate('worker', '_id firstName lastName email phone userType')
+    .sort({ createdAt: -1 });
+
+  const workerProfiles = await WorkerProfile.find();
+  const profileMap = new Map(
+    workerProfiles.map((profile) => [profile.user.toString(), profile])
+  );
+
+  const data = applications.map((application) => {
+    const workerId =
+      application.worker && application.worker._id
+        ? application.worker._id.toString()
+        : application.worker?.toString();
+    const workerProfile = workerId ? profileMap.get(workerId) || null : null;
+    return buildApplicationPresenter(application, {
+      workerProfile,
+      includeApplicantDetails: true,
+      rawJobId: application.job?.toString ? application.job.toString() : application.job
+    });
+  });
+
+  res.status(200).json({
+    status: 'success',
+    results: data.length,
+    teamMemberId,
+    data
   });
 });

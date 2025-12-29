@@ -16,8 +16,8 @@ const teamMemberSchema = new mongoose.Schema(
     email: { type: String, required: true, trim: true },
     role: {
       type: String,
-      enum: ['owner', 'admin'],
-      default: 'staff'
+      enum: ['owner', 'admin', 'staff'],
+      default: 'admin'
     },
     permissions: {
       type: [String],

@@ -10,14 +10,71 @@ const TeamMember = require('../../modules/businesses/teamMember.model');
 
 // All available permissions in the system
 const ALL_PERMISSIONS = {
+  // Business permissions
+  'create_business': 'Create a new business',
+  'edit_business': 'Edit business details',
+  'delete_business': 'Delete a business',
+  'view_business_analytics': 'View business analytics',
   
+  // Job permissions
+  'create_jobs': 'Create jobs',
+  'edit_jobs': 'Edit jobs',
+  'delete_jobs': 'Delete jobs',
+  'view_jobs': 'View jobs',
+  'post_jobs': 'Post/publish jobs',
+  
+  // Application permissions
+  'view_applications': 'View applications',
+  'manage_applications': 'Manage applications',
+  'approve_applications': 'Approve applications',
+  'reject_applications': 'Reject applications',
+  
+  // Attendance permissions
+  'view_attendance': 'View attendance',
+  'manage_attendance': 'Manage attendance',
+  'approve_attendance': 'Approve attendance',
+  
+  // Schedule permissions
+  'create_schedules': 'Create schedules',
+  'edit_schedules': 'Edit schedules',
+  'delete_schedules': 'Delete schedules',
+  'manage_schedules': 'Manage schedules',
+  
+  // Team permissions
+  'invite_team_members': 'Invite team members',
+  'edit_team_members': 'Edit team members',
+  'remove_team_members': 'Remove team members',
+  'manage_permissions': 'Manage team permissions',
+  'view_team_members': 'View team members',
+  
+  // Payment permissions
+  'view_payments': 'View payments',
+  'manage_payments': 'Manage payments',
 };
 
 // Role-based default permissions
 const ROLE_PERMISSIONS = {
   'owner': Object.keys(ALL_PERMISSIONS), // Owners get all permissions
   'admin': Object.keys(ALL_PERMISSIONS), // Admins get all permissions
- 
+  'manager': [
+    'create_jobs',
+    'edit_jobs',
+    'delete_jobs',
+    'view_jobs',
+    'post_jobs',
+    'view_applications',
+    'manage_applications',
+    'view_attendance',
+    'manage_attendance',
+    'invite_team_members',
+    'view_team_members',
+  ],
+  'staff': [
+    'view_jobs',
+    'view_applications',
+    'view_attendance',
+    'view_team_members',
+  ],
 };
 
 // API endpoint to permission mapping

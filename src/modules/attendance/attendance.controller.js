@@ -310,18 +310,41 @@ exports.listAttendance = catchAsync(async (req, res, next) => {
   }
   // Add business access control for employers
   else if (req.user.userType === 'employer') {
-    const accessibleBusinessIds = await getAccessibleBusinessIds(req.user);
-    if (!accessibleBusinessIds.size) {
-      return res.status(200).json({ status: 'success', results: 0, data: [] });
-    }
+    const TeamMember = require('../../modules/businesses/teamMember.model');
+    
+    // Check if user is a team member with full_access permission
+    const teamMemberWithFullAccess = await TeamMember.findOne({
+      user: req.user._id,
+      'permissions': 'full_access'
+    });
 
-    if (req.query.businessId) {
-      if (!accessibleBusinessIds.has(req.query.businessId)) {
-        return next(new AppError('You do not have access to this business', 403));
+    if (teamMemberWithFullAccess) {
+      // Team member with full_access can see all attendance for their business
+      console.log('👤 [ATTENDANCE-CONTROLLER] Team Member with full_access accessing attendance');
+      const businessId = teamMemberWithFullAccess.business.toString();
+      if (req.query.businessId) {
+        if (req.query.businessId !== businessId) {
+          return next(new AppError('You do not have access to this business', 403));
+        }
+        filter.business = req.query.businessId;
+      } else {
+        filter.business = businessId;
       }
-      filter.business = req.query.businessId;
     } else {
-      filter.business = { $in: Array.from(accessibleBusinessIds) };
+      // Regular employer access control
+      const accessibleBusinessIds = await getAccessibleBusinessIds(req.user);
+      if (!accessibleBusinessIds.size) {
+        return res.status(200).json({ status: 'success', results: 0, data: [] });
+      }
+
+      if (req.query.businessId) {
+        if (!accessibleBusinessIds.has(req.query.businessId)) {
+          return next(new AppError('You do not have access to this business', 403));
+        }
+        filter.business = req.query.businessId;
+      } else {
+        filter.business = { $in: Array.from(accessibleBusinessIds) };
+      }
     }
   }
   // Other user types shouldn't have access to attendance
@@ -709,30 +732,57 @@ exports.getManagementView = catchAsync(async (req, res, next) => {
     return next(new AppError('Invalid date parameter', 400));
   }
   
-  // Add business access control
-  const accessibleBusinessIds = await getAccessibleBusinessIds(req.user);
-  if (!accessibleBusinessIds.size) {
-    return res.status(200).json({ 
-      status: 'success', 
-      data: [], 
-      summary: { totalWorkers: 0, totalHours: 0, totalDistance: 0 } 
-    });
-  }
+  const TeamMember = require('../../modules/businesses/teamMember.model');
+  
+  // Check if user is a team member with full_access permission
+  const teamMemberWithFullAccess = await TeamMember.findOne({
+    user: req.user._id,
+    'permissions': 'full_access'
+  });
 
-  const filter = {
-    employer: req.user._id,
-    // Find records where the scheduled time range overlaps with the queried date
-    // A job overlaps with a date if: job_start <= day_end AND job_end > day_start
-    scheduledStart: { $lte: range.end },
-    scheduledEnd: { $gt: range.start },
-    business: { $in: Array.from(accessibleBusinessIds) }
-  };
+  let filter;
+  if (teamMemberWithFullAccess) {
+    // Team member with full_access can see all attendance for their business
+    console.log('👤 [ATTENDANCE-CONTROLLER] Team Member with full_access accessing management view');
+    const businessId = teamMemberWithFullAccess.business.toString();
+    filter = {
+      scheduledStart: { $lte: range.end },
+      scheduledEnd: { $gt: range.start },
+      business: businessId
+    };
 
-  if (req.query.businessId) {
-    if (!accessibleBusinessIds.has(req.query.businessId)) {
-      return next(new AppError('You do not have access to this business', 403));
+    if (req.query.businessId) {
+      if (req.query.businessId !== businessId) {
+        return next(new AppError('You do not have access to this business', 403));
+      }
+      filter.business = req.query.businessId;
     }
-    filter.business = req.query.businessId;
+  } else {
+    // Regular employer access control
+    const accessibleBusinessIds = await getAccessibleBusinessIds(req.user);
+    if (!accessibleBusinessIds.size) {
+      return res.status(200).json({ 
+        status: 'success', 
+        data: [], 
+        summary: { totalWorkers: 0, totalHours: 0, totalDistance: 0 } 
+      });
+    }
+
+    filter = {
+      employer: req.user._id,
+      // Find records where the scheduled time range overlaps with the queried date
+      // A job overlaps with a date if: job_start <= day_end AND job_end > day_start
+      scheduledStart: { $lte: range.end },
+      scheduledEnd: { $gt: range.start },
+      business: { $in: Array.from(accessibleBusinessIds) }
+    };
+
+    if (req.query.businessId) {
+      if (!accessibleBusinessIds.has(req.query.businessId)) {
+        return next(new AppError('You do not have access to this business', 403));
+      }
+      filter.business = req.query.businessId;
+    }
   }
 
   if (req.query.status && req.query.status !== 'all') {

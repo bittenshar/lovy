@@ -207,6 +207,7 @@ exports.listMyApplications = catchAsync(async (req, res, next) => {
 
   console.log('📋 [APP-CONTROLLER] listMyApplications called for user type:', req.user.userType);
 
+  const TeamMember = require('../../modules/businesses/teamMember.model');
   let query;
   
   // Different logic based on user type
@@ -215,11 +216,26 @@ exports.listMyApplications = catchAsync(async (req, res, next) => {
     console.log('   → Worker: finding their own applications');
     query = { worker: req.user._id };
   } else if (req.user.userType === 'employer') {
-    // Employers: view applications to their jobs
-    console.log('   → Employer: finding applications to their jobs');
-    const jobIds = await Job.distinct('_id', { employer: req.user._id });
-    console.log('   → Found', jobIds.length, 'jobs for this employer');
-    query = { job: { $in: jobIds } };
+    // Check if user is a team member with full_access permission
+    const teamMemberWithFullAccess = await TeamMember.findOne({
+      user: req.user._id,
+      'permissions': 'full_access'
+    });
+
+    if (teamMemberWithFullAccess) {
+      // Team member with full_access can see all applications for their business
+      console.log('   → Team Member with full_access: finding all applications for their business');
+      const businessId = teamMemberWithFullAccess.business;
+      const jobIds = await Job.distinct('_id', { business: businessId });
+      console.log('   → Found', jobIds.length, 'jobs for this business');
+      query = { job: { $in: jobIds } };
+    } else {
+      // Regular employer: view applications to their jobs
+      console.log('   → Employer: finding applications to their jobs');
+      const jobIds = await Job.distinct('_id', { employer: req.user._id });
+      console.log('   → Found', jobIds.length, 'jobs for this employer');
+      query = { job: { $in: jobIds } };
+    }
   } else {
     return next(new AppError('Invalid user type for this operation', 403));
   }
@@ -437,23 +453,49 @@ exports.listApplications = catchAsync(async (req, res, next) => {
   );
 
   if (req.user.userType === 'employer') {
-    const accessibleBusinessIds = await getAccessibleBusinessIds(req.user);
-    if (!accessibleBusinessIds.size) {
-      return res
-        .status(200)
-        .json({ status: 'success', results: 0, data: [] });
-    }
+    const TeamMember = require('../../modules/businesses/teamMember.model');
+    
+    // Check if user is a team member with full_access permission
+    const teamMemberWithFullAccess = await TeamMember.findOne({
+      user: req.user._id,
+      'permissions': 'full_access'
+    });
 
-    if (filter.business) {
-      const requestedBusinessId = normalizeIdValue(filter.business);
-      if (!requestedBusinessId || !accessibleBusinessIds.has(requestedBusinessId)) {
-        return next(
-          new AppError('You do not have access to this business', 403)
-        );
+    if (teamMemberWithFullAccess) {
+      // Team member with full_access can see all applications for their business
+      console.log('👤 [APP-CONTROLLER] Team Member with full_access accessing applications');
+      const businessId = teamMemberWithFullAccess.business.toString();
+      if (filter.business) {
+        const requestedBusinessId = normalizeIdValue(filter.business);
+        if (requestedBusinessId !== businessId) {
+          return next(
+            new AppError('You do not have access to this business', 403)
+          );
+        }
+        filter.business = requestedBusinessId;
+      } else {
+        filter.business = businessId;
       }
-      filter.business = requestedBusinessId;
     } else {
-      filter.business = { $in: Array.from(accessibleBusinessIds) };
+      // Regular employer access control
+      const accessibleBusinessIds = await getAccessibleBusinessIds(req.user);
+      if (!accessibleBusinessIds.size) {
+        return res
+          .status(200)
+          .json({ status: 'success', results: 0, data: [] });
+      }
+
+      if (filter.business) {
+        const requestedBusinessId = normalizeIdValue(filter.business);
+        if (!requestedBusinessId || !accessibleBusinessIds.has(requestedBusinessId)) {
+          return next(
+            new AppError('You do not have access to this business', 403)
+          );
+        }
+        filter.business = requestedBusinessId;
+      } else {
+        filter.business = { $in: Array.from(accessibleBusinessIds) };
+      }
     }
   }
 

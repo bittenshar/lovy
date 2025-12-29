@@ -66,11 +66,12 @@ async function ensureBusinessAccess({
   const permissionsToCheck = normalizePermissions(requiredPermissions);
   const role = (teamMember.role || '').toLowerCase();
   const hasFullRoleAccess = role === 'owner' || role === 'admin';
+  const hasFullAccess = teamMember.permissions && teamMember.permissions.includes('full_access');
   const rolePermissions = Array.isArray(ROLE_PERMISSIONS?.[role])
     ? ROLE_PERMISSIONS[role]
     : [];
 
-  if (permissionsToCheck.length && !hasFullRoleAccess) {
+  if (permissionsToCheck.length && !hasFullRoleAccess && !hasFullAccess) {
     const permissionSet = new Set([
       ...(teamMember.permissions || []),
       ...rolePermissions,

@@ -10,6 +10,9 @@ const TeamMember = require('../../modules/businesses/teamMember.model');
 
 // All available permissions in the system
 const ALL_PERMISSIONS = {
+  // Full Access
+  'full_access': 'Full Access - All Permissions',
+  
   // Business Management
   'create_business': 'Create Business',
   'edit_business': 'Edit Business',
@@ -65,7 +68,6 @@ const ALL_PERMISSIONS = {
   'edit_business_profile': 'Edit Business Profile',
   'view_dashboard': 'View Dashboard',
   'view_schedules': 'View Schedules',
-  'manage_schedules': 'Manage Schedules',
   'view_budget': 'View Budget',
   'manage_budget': 'Manage Budget',
   'manage_subscriptions': 'Manage Subscriptions',
@@ -296,6 +298,10 @@ async function getUserPermissions(userId, businessId) {
  * Check if user has a specific permission
  */
 function hasPermission(userPermissions, requiredPermission) {
+  // full_access grants all permissions
+  if (userPermissions.includes('full_access')) {
+    return true;
+  }
   return userPermissions.includes(requiredPermission);
 }
 
@@ -303,6 +309,10 @@ function hasPermission(userPermissions, requiredPermission) {
  * Check if user has any of the required permissions
  */
 function hasAnyPermission(userPermissions, requiredPermissions) {
+  // full_access grants all permissions
+  if (userPermissions.includes('full_access')) {
+    return true;
+  }
   return requiredPermissions.some(permission => 
     userPermissions.includes(permission)
   );
@@ -312,6 +322,10 @@ function hasAnyPermission(userPermissions, requiredPermissions) {
  * Check if user has all of the required permissions
  */
 function hasAllPermissions(userPermissions, requiredPermissions) {
+  // full_access grants all permissions
+  if (userPermissions.includes('full_access')) {
+    return true;
+  }
   return requiredPermissions.every(permission => 
     userPermissions.includes(permission)
   );

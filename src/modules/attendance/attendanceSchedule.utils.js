@@ -51,9 +51,11 @@ const toTime24 = (value) => {
   if (Number.isNaN(date.valueOf())) {
     return null;
   }
-  const hours = `${date.getHours()}`.padStart(2, '0');
+  const hours = date.getHours();
   const minutes = `${date.getMinutes()}`.padStart(2, '0');
-  return `${hours}:${minutes}`;
+  const ampm = hours >= 12 ? 'PM' : 'AM';
+  const normalized = hours % 12 || 12;
+  return `${normalized}:${minutes} ${ampm}`;
 };
 
 const toObjectIdString = (value) => {

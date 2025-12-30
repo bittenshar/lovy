@@ -1,0 +1,95 @@
+{
+  "info": {
+    "name": "Team Member Applications API",
+    "description": "API endpoints for team member to view their assigned applications",
+    "version": "1.0.0"
+  },
+  "item": [
+    {
+      "name": "Get Team Member Applications",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{authToken}}",
+            "type": "text"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json",
+            "type": "text"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n    \"businessId\": \"68e2a895077beb8cafcadbdb\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/applications/team-member/me",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "applications",
+            "team-member",
+            "me"
+          ]
+        },
+        "description": "Retrieve all applications for the current team member from their assigned business"
+      },
+      "response": [
+        {
+          "name": "Success Response",
+          "originalRequest": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/applications/team-member/me",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "applications",
+                "team-member",
+                "me"
+              ]
+            }
+          },
+          "status": "OK",
+          "code": 200,
+          "_postman_previewlanguage": "json",
+          "header": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "cookie": [],
+          "body": "{\n    \"status\": \"success\",\n    \"results\": 6,\n    \"teamMemberId\": \"6952984a1b585e0f9a8661f9\",\n    \"data\": [\n        {\n            \"id\": \"6946d1db2544a929fcae4162\",\n            \"status\": \"hired\",\n            \"message\": \"jggiigiggu\",\n            \"createdAt\": \"2025-12-20T16:42:03.764Z\",\n            \"updatedAt\": \"2025-12-22T23:11:38.050Z\",\n            \"hiredAt\": \"2025-12-22T23:11:38.049Z\",\n            \"rejectedAt\": \"2025-12-22T23:11:32.745Z\",\n            \"withdrawnAt\": null,\n            \"jobId\": \"69453abbd28e52801c57e61d\",\n            \"workerId\": \"6946ca11ab6fb12dc7fa9b1d\",\n            \"job\": {\n                \"id\": \"69453abbd28e52801c57e61d\",\n                \"title\": \"Senior Developer\",\n                \"description\": \"Looking for a senior developer\",\n                \"hourlyRate\": 50,\n                \"urgency\": \"low\",\n                \"business\": {\n                    \"id\": \"690bedd42174960f5b603929\",\n                    \"name\": \"Tech Solutions Inc Updated\"\n                }\n            },\n            \"worker\": {\n                \"id\": \"6946ca11ab6fb12dc7fa9b1d\",\n                \"firstName\": \"i\",\n                \"lastName\": \"i\",\n                \"fullName\": \"i i\",\n                \"email\": \"i@gmail.com\",\n                \"userType\": \"worker\"\n            }\n        }\n    ]\n}"
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "https://lovy-dusky.vercel.app/api",
+      "type": "string"
+    },
+    {
+      "key": "authToken",
+      "value": "",
+      "type": "string",
+      "description": "JWT bearer token for authentication"
+    }
+  ]
+}

@@ -123,9 +123,9 @@ exports.getWorkerFeedback = catchAsync(async (req, res) => {
 });
 
 exports.updateWorkerProfile = catchAsync(async (req, res, next) => {
-  const workerId = req.params.workerId || req.user._id;
-  if (req.user.userType !== 'worker' || req.user._id.toString() !== workerId.toString()) {
-    return next(new AppError('You can only update your own profile', 403));
+  const workerId = req.user._id;
+  if (req.user.userType !== 'worker') {
+    return next(new AppError('Only workers can update their profile', 403));
   }
   const allowedFields = ['firstName', 'lastName', 'phone'];
   allowedFields.forEach((field) => {
@@ -135,7 +135,7 @@ exports.updateWorkerProfile = catchAsync(async (req, res, next) => {
   });
   await req.user.save();
 
-  const profileFields = ['bio', 'skills', 'experience', 'languages', 'profilePicture', 'portfolioImages'];
+  const profileFields = ['bio', 'skills', 'experience', 'languages', 'profilePicture', 'portfolioImages', 'notificationsEnabled', 'emailNotificationsEnabled', 'isVisible', 'locationEnabled', 'shareWorkHistory', 'minimumPay', 'maxTravelDistance', 'availableForFullTime', 'availableForPartTime', 'availableForTemporary', 'weekAvailability'];
   const updateData = profileFields.reduce((acc, field) => {
     if (field in req.body) {
       acc[field] = req.body[field];

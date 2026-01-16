@@ -97,15 +97,8 @@ exports.restrictTo = (...roles) => (req, res, next) => {
   console.log('   User type:', req.user?.userType);
   console.log('   User ID:', req.user?._id);
   
-  // For 'worker' role, also accept 'team_member' (workers who are team members)
-  const allowedRoles = roles.flatMap(role => 
-    role === 'worker' ? ['worker', 'team_member'] : [role]
-  );
-  
-  if (!req.user || !allowedRoles.includes(req.user.userType)) {
+  if (!req.user || !roles.includes(req.user.userType)) {
     console.error('❌ Access denied - user type mismatch');
-    console.error('   User type:', req.user?.userType);
-    console.error('   Allowed:', allowedRoles);
     return next(new AppError('You do not have permission to perform this action', 403));
   }
   console.log('✅ User role validated');

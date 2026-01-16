@@ -74,7 +74,6 @@ exports.signup = async (payload) => {
     firstName: payload.firstName || payload.name || '',
     lastName: payload.lastName || '',
     phone: payload.phone || null,
-    fcmTokens: payload.fcmToken ? [payload.fcmToken] : []
   });
 
   if (userType === 'worker') {

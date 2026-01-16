@@ -40,10 +40,6 @@ const userSchema = new mongoose.Schema(
       type: String,
       default: null
     },
-    fcmTokens: {
-      type: [String],
-      default: []
-    },
     selectedBusiness: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Business',
